@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-_z7ye9-&m@$38@q&t&@trhy4_8(rb!gxj0o8$n7lu*3o9jcwev
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -126,3 +126,18 @@ STATIC_URL = 'static/'
 
 import os
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+
+# Media files (uploaded report cards)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Gemini AI (free tier, used for chatbot and report card scanning)
+try:
+    from .local_settings import *
+except ImportError:
+    pass
+
+# Hosting
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']

@@ -77,11 +77,11 @@ class GradeForm(forms.ModelForm):
             }),
         }
 
-class ReportCardUploadForm(forms.From):
+class ReportCardUploadForm(forms.Form):
     #Upload a photo of a learner's report card for Ollama grade extraction
     learner = forms.ModelChoiceField(
         queryset=User.objects.filter(role='learner').order_by('last_name'),
-        widget=froms.Select(attrs={
+        widget=forms.Select(attrs={
             'class': TW,
             'accept': 'image/*',
         }),

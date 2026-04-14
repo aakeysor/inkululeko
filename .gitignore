@@ -1,0 +1,25 @@
+# Database
+db.sqlite3
+
+# API keys and secrets
+inkululeko_project/local_settings.py
+
+# Virtual environment
+.venv/
+
+# Uploaded files
+media/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# PyCharm
+.idea/
+
+# Mac
+.DS_Store
+
+# Static files collected for production
+staticfiles/

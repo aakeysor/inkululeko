@@ -30,12 +30,12 @@ class SchoolAdmin(admin.ModelAdmin):
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
     list_display = ('name', 'school')
-    list_filter = ('subject_school',)
+    list_filter = ('school',)
 
 @admin.register(Enrollment)
 class EnrollmentAdmin(admin.ModelAdmin):
     list_display = ('learner', 'subject')
-    list_filter = ('subject_learner',)
+    list_filter = ('subject__school',)
 
 @admin.register(MentorAssignment)
 class MentorAssignmentAdmin(admin.ModelAdmin):

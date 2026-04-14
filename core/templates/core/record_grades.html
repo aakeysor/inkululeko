@@ -1,10 +1,112 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'core/base.html' %}
+{% block title %}Record Grades{% endblock %}
 
-</body>
-</html>
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">Record Grades</h1>
+    <p class="text-gray-500 text-sm mt-1">
+        Enter grades manually or scan a report card
+    </p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Manual Entry -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 class="font-semibold text-gray-900 mb-4">Manual Entry</h2>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Learner
+                </label>
+                {{ form.learner }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Subject
+                </label>
+                {{ form.subject }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Assessment Name
+                </label>
+                {{ form.assessment_name }}
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700
+                                  mb-1.5">
+                        Score
+                    </label>
+                    {{ form.score }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700
+                                  mb-1.5">
+                        Max Score
+                    </label>
+                    {{ form.max_score }}
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Date
+                </label>
+                {{ form.date }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Notes
+                </label>
+                {{ form.notes }}
+            </div>
+            <button type="submit"
+                    class="w-full bg-brand-600 hover:bg-brand-700 text-white
+                           py-2.5 rounded-lg text-sm font-medium
+                           transition-colors">
+                Save Grade
+            </button>
+        </form>
+    </div>
+
+    <!-- Report Card Scanner -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 class="font-semibold text-gray-900 mb-1">
+            Scan Report Card
+        </h2>
+        <p class="text-sm text-gray-500 mb-4">
+            Upload a photo and AI will extract the grades automatically
+        </p>
+        <form method="post" action="{% url 'scan_report_card' %}"
+              enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Learner
+                </label>
+                {{ upload_form.learner }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Report Card Photo
+                </label>
+                <div class="mt-1 border-2 border-dashed border-gray-300
+                            rounded-lg p-6 text-center hover:border-gray-400
+                            transition-colors">
+                    {{ upload_form.image }}
+                    <p class="text-xs text-gray-400 mt-2">
+                        JPG, PNG, or WEBP — make sure text is clearly visible
+                    </p>
+                </div>
+            </div>
+            <button type="submit"
+                    class="w-full bg-emerald-600 hover:bg-emerald-700
+                           text-white py-2.5 rounded-lg text-sm font-medium
+                           transition-colors">
+                Scan & Extract Grades
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

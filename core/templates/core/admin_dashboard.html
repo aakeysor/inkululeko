@@ -1,10 +1,121 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'core/base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
 
-</body>
-</html>
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <p class="text-gray-500 text-sm mt-1">
+        Overview of the Inkululeko program
+    </p>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">
+            Learners
+        </p>
+        <p class="text-3xl font-bold text-gray-900 mt-1">
+            {{ total_learners }}
+        </p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">
+            Assistants
+        </p>
+        <p class="text-3xl font-bold text-gray-900 mt-1">
+            {{ total_assistants }}
+        </p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">
+            Mentors
+        </p>
+        <p class="text-3xl font-bold text-gray-900 mt-1">
+            {{ total_mentors }}
+        </p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">
+            Schools
+        </p>
+        <p class="text-3xl font-bold text-gray-900 mt-1">
+            {{ total_schools }}
+        </p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <a href="{% url 'manage_users' %}"
+       class="bg-white rounded-xl border border-gray-200 p-5
+              hover:border-gray-300 hover:shadow-sm transition-all group">
+        <p class="font-semibold text-gray-900 group-hover:text-brand-600
+                  transition-colors">Manage Users</p>
+        <p class="text-sm text-gray-500 mt-0.5">Add, edit, view all users</p>
+    </a>
+    <a href="{% url 'mark_attendance' %}"
+       class="bg-white rounded-xl border border-gray-200 p-5
+              hover:border-gray-300 hover:shadow-sm transition-all group">
+        <p class="font-semibold text-gray-900 group-hover:text-brand-600
+                  transition-colors">Mark Attendance</p>
+        <p class="text-sm text-gray-500 mt-0.5">Record daily attendance</p>
+    </a>
+    <a href="{% url 'record_grades' %}"
+       class="bg-white rounded-xl border border-gray-200 p-5
+              hover:border-gray-300 hover:shadow-sm transition-all group">
+        <p class="font-semibold text-gray-900 group-hover:text-brand-600
+                  transition-colors">Record Grades</p>
+        <p class="text-sm text-gray-500 mt-0.5">
+            Enter results or scan report cards
+        </p>
+    </a>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-900">Recent Attendance</h2>
+    </div>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-gray-100 text-left text-xs
+                       font-medium text-gray-400 uppercase tracking-wide">
+                <th class="px-6 py-3">Learner</th>
+                <th class="px-6 py-3">Subject</th>
+                <th class="px-6 py-3">Date</th>
+                <th class="px-6 py-3">Status</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+            {% for record in recent_attendance %}
+            <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-3 font-medium text-gray-900">
+                    {{ record.learner.get_full_name }}
+                </td>
+                <td class="px-6 py-3 text-gray-600">
+                    {{ record.subject.name }}
+                </td>
+                <td class="px-6 py-3 text-gray-600">{{ record.date }}</td>
+                <td class="px-6 py-3">
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs
+                                 font-medium
+                        {% if record.status == 'present' %}
+                            bg-emerald-50 text-emerald-700
+                        {% elif record.status == 'late' %}
+                            bg-amber-50 text-amber-700
+                        {% else %}
+                            bg-red-50 text-red-700
+                        {% endif %}">
+                        {{ record.get_status_display }}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="px-6 py-12 text-center text-gray-400">
+                    No attendance records yet.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

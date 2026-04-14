@@ -1,0 +1,94 @@
+{% extends 'core/base.html' %}
+{% block title %}Confirm Scanned Grades{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">
+        Review Extracted Grades
+    </h1>
+    <p class="text-gray-500 text-sm mt-1">
+        Scanned for {{ learner.get_full_name }} — check the results
+        and correct any errors before saving
+    </p>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <form method="post" action="{% url 'save_scanned_grades' %}">
+        {% csrf_token %}
+        <input type="hidden" name="learner_id" value="{{ learner.id }}">
+        <input type="hidden" name="grade_count"
+               value="{{ matched_grades|length }}">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-gray-100 text-left text-xs
+                           font-medium text-gray-400 uppercase tracking-wide">
+                    <th class="px-6 py-3">Include</th>
+                    <th class="px-6 py-3">Detected Subject</th>
+                    <th class="px-6 py-3">Matched To</th>
+                    <th class="px-6 py-3">Score</th>
+                    <th class="px-6 py-3">Max</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                {% for g in matched_grades %}
+                <tr class="{% if not g.matched %}bg-amber-50{% endif %}">
+                    <td class="px-6 py-3">
+                        <input type="checkbox"
+                               name="include_{{ forloop.counter0 }}"
+                               value="1"
+                               {% if g.matched %}checked{% endif %}
+                               class="w-4 h-4 text-brand-600
+                                      rounded focus:ring-brand-500">
+                    </td>
+                    <td class="px-6 py-3 text-gray-600">
+                        {{ g.subject_name }}
+                    </td>
+                    <td class="px-6 py-3">
+                        <select name="subject_id_{{ forloop.counter0 }}"
+                                class="w-full px-3 py-1.5 border border-gray-300
+                                       rounded-md text-sm">
+                            <option value="">— Select —</option>
+                            {% for s in subjects %}
+                            <option value="{{ s.id }}"
+                                {% if s.id == g.subject_id %}
+                                    selected{% endif %}>
+                                {{ s.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td class="px-6 py-3">
+                        <input type="number" step="0.01"
+                               name="score_{{ forloop.counter0 }}"
+                               value="{{ g.score }}"
+                               class="w-20 px-3 py-1.5 border border-gray-300
+                                      rounded-md text-sm">
+                    </td>
+                    <td class="px-6 py-3">
+                        <input type="number" step="0.01"
+                               name="max_score_{{ forloop.counter0 }}"
+                               value="{{ g.max_score }}"
+                               class="w-20 px-3 py-1.5 border border-gray-300
+                                      rounded-md text-sm">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50
+                    flex items-center justify-between">
+            <a href="{% url 'record_grades' %}"
+               class="text-sm text-gray-500 hover:text-gray-700
+                      transition-colors">
+                ← Cancel
+            </a>
+            <button type="submit"
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white
+                           px-6 py-2.5 rounded-lg text-sm font-medium
+                           transition-colors">
+                Save Selected Grades
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
