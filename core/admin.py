@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, School, Subject, Enrollment,
     MentorAssignment, Attendance, Grade, ChatMessage,
+    ActivityLog, TutoringSession, MentorRequest,
 )
 
 @admin.register(User)
@@ -29,13 +30,12 @@ class SchoolAdmin(admin.ModelAdmin):
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'school')
-    list_filter = ('school',)
+    list_display = ('name',)
 
 @admin.register(Enrollment)
 class EnrollmentAdmin(admin.ModelAdmin):
     list_display = ('learner', 'subject')
-    list_filter = ('subject__school',)
+    list_filter = ('subject',)
 
 @admin.register(MentorAssignment)
 class MentorAssignmentAdmin(admin.ModelAdmin):
@@ -63,3 +63,23 @@ class ChatMessageAdmin(admin.ModelAdmin):
     list_display = ('user', 'timestamp', 'message')
     list_filter = ('user', 'timestamp')
     readonly_fields = ('user', 'message', 'response', 'timestamp')
+
+
+@admin.register(ActivityLog)
+class ActivityLogAdmin(admin.ModelAdmin):
+    list_display = ('user', 'action_type', 'description', 'timestamp')
+    list_filter = ('action_type', 'timestamp')
+    readonly_fields = ('user', 'action_type', 'description', 'timestamp')
+
+
+@admin.register(TutoringSession)
+class TutoringSessionAdmin(admin.ModelAdmin):
+    list_display = ('learner', 'tutor', 'subject', 'date', 'duration_minutes')
+    list_filter = ('subject', 'date')
+    date_hierarchy = 'date'
+
+
+@admin.register(MentorRequest)
+class MentorRequestAdmin(admin.ModelAdmin):
+    list_display = ('learner', 'mentor', 'subject', 'status', 'created_at')
+    list_filter = ('status', 'created_at')

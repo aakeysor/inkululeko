@@ -53,7 +53,19 @@
                        class="px-3 py-2 rounded-md text-gray-600
                               hover:text-gray-900 hover:bg-gray-100
                               transition-colors">
-                        Users
+                        Manage Users
+                    </a>
+                    <a href="{% url 'reports' %}"
+                       class="px-3 py-2 rounded-md text-gray-600
+                              hover:text-gray-900 hover:bg-gray-100
+                              transition-colors">
+                        Reports
+                    </a>
+                    <a href="{% url 'manage_schools' %}"
+                       class="px-3 py-2 rounded-md text-gray-600
+                              hover:text-gray-900 hover:bg-gray-100
+                              transition-colors">
+                        Schools
                     </a>
                     {% endif %}
                     {% if user.role == 'admin' or user.role == 'assistant' %}
@@ -68,6 +80,12 @@
                               hover:text-gray-900 hover:bg-gray-100
                               transition-colors">
                         Grades
+                    </a>
+                    <a href="{% url 'manage_enrollments' %}"
+                       class="px-3 py-2 rounded-md text-gray-600
+                              hover:text-gray-900 hover:bg-gray-100
+                              transition-colors">
+                        Enrolments
                     </a>
                     {% endif %}
                 </div>

@@ -1,0 +1,617 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ label }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ label }}</h1>
+        <p class="text-gray-500 text-sm mt-1">
+            {{ users|length }} user{{ users|length|pluralize }}
+        </p>
+    </div>
+    <a href="{% url 'dashboard' %}"
+       class="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+        ← Back to Dashboard
+    </a>
+</div>
+
+<!-- Search -->
+<div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+    <form method="get" class="flex flex-wrap items-end gap-4">
+        {% if role_filter %}
+        <input type="hidden" name="role" value="{{ role_filter }}">
+        {% endif %}
+        <div class="flex-1 min-w-[200px]">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                Search
+            </label>
+            <input type="text" name="search" value="{{ search }}"
+                   placeholder="Search by name or username..."
+                   class="w-full px-4 py-2.5 border border-gray-300 rounded-md
+                          text-sm focus:outline-none focus:ring-2
+                          focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <button type="submit"
+                class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5
+                       rounded-lg text-sm font-medium transition-colors">
+            Search
+        </button>
+        {% if search %}
+        <a href="{% url 'user_list' %}{% if role_filter %}?role={{ role_filter }}{% endif %}"
+           class="text-sm text-gray-500 hover:text-gray-700 transition-colors
+                  px-4 py-2.5">
+            Clear
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- User Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {% for u in users %}
+    <div onclick="openUserDetail({{ u.id }})"
+         class="bg-white rounded-xl border border-gray-200 p-5
+                hover:border-gray-300 hover:shadow-sm transition-all
+                cursor-pointer group">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="font-semibold text-gray-900 group-hover:text-brand-600
+                          transition-colors">
+                    {{ u.get_full_name|default:u.username }}
+                </p>
+                <p class="text-sm text-gray-500 mt-0.5">
+                    {{ u.username }}
+                </p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="inline-flex px-2 py-0.5 rounded-full text-xs
+                             font-medium
+                    {% if u.role == 'admin' %}
+                        bg-slate-100 text-slate-700
+                    {% elif u.role == 'assistant' %}
+                        bg-blue-50 text-blue-700
+                    {% elif u.role == 'learner' %}
+                        bg-emerald-50 text-emerald-700
+                    {% else %}
+                        bg-amber-50 text-amber-700
+                    {% endif %}">
+                    {{ u.get_role_display }}
+                </span>
+                {% if u.is_active %}
+                    <span class="inline-flex w-2 h-2 rounded-full
+                                 bg-emerald-500"></span>
+                {% else %}
+                    <span class="inline-flex w-2 h-2 rounded-full
+                                 bg-gray-300"></span>
+                {% endif %}
+            </div>
+        </div>
+        {% if u.school %}
+        <p class="text-xs text-gray-400 mt-2">{{ u.school.name }}</p>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="col-span-2 bg-white rounded-xl border border-gray-200
+                px-6 py-12 text-center text-gray-400">
+        No users found.
+    </div>
+    {% endfor %}
+</div>
+
+<!-- User Detail Modal -->
+<div id="user-modal"
+     class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+            <div>
+                <h3 id="modal-name" class="font-semibold text-gray-900 text-lg"></h3>
+                <p id="modal-subtitle" class="text-sm text-gray-500"></p>
+            </div>
+            <button onclick="closeUserDetail()"
+                    class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor" stroke-width="2">
+                    <path d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div id="modal-body" class="px-6 py-5 overflow-y-auto">
+            <p class="text-gray-400 text-sm">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const subjectColors = [
+    '#3b82f6','#10b981','#f59e0b','#ef4444',
+    '#8b5cf6','#0d9488','#f97316','#4f46e5','#22c55e',
+];
+let chartInstance = null;
+let currentData = null;
+
+// -------------------------------------------------------
+// Open modal and route to the correct builder
+// -------------------------------------------------------
+async function openUserDetail(userId) {
+    const modal = document.getElementById('user-modal');
+    const name = document.getElementById('modal-name');
+    const subtitle = document.getElementById('modal-subtitle');
+    const body = document.getElementById('modal-body');
+
+    modal.classList.remove('hidden');
+    name.textContent = 'Loading...';
+    subtitle.textContent = '';
+    body.innerHTML = '<p class="text-gray-400 text-sm">Loading...</p>';
+
+    try {
+        const res = await fetch(`/api/user/${userId}/`);
+        const d = await res.json();
+
+        name.textContent = d.full_name;
+        subtitle.textContent = `${d.role} · ID: ${d.id}`;
+
+        if (d.role_key === 'learner') {
+            body.innerHTML = buildStudentModal(d);
+            initChart(d);
+        } else if (d.role_key === 'assistant') {
+            body.innerHTML = buildAssistantModal(d);
+        } else if (d.role_key === 'mentor') {
+            body.innerHTML = buildMentorModal(d);
+        } else {
+            body.innerHTML = buildPersonalInfo(d);
+        }
+    } catch (err) {
+        body.innerHTML = '<p class="text-red-600 text-sm">Failed to load user details.</p>';
+    }
+}
+
+function closeUserDetail() {
+    document.getElementById('user-modal').classList.add('hidden');
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    currentData = null;
+}
+
+document.getElementById('user-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeUserDetail();
+});
+
+// -------------------------------------------------------
+// Shared: Personal Information card
+// -------------------------------------------------------
+function buildPersonalInfo(d) {
+    let h = `
+    <div class="bg-gray-50 rounded-xl p-5 mb-4">
+        <h4 class="font-semibold text-gray-900 mb-3">Personal Information</h4>
+        <div class="space-y-2.5">
+            <div><p class="text-xs text-gray-400">Full Name</p>
+                 <p class="text-sm font-medium text-gray-900">${d.full_name}</p></div>
+            <div><p class="text-xs text-gray-400">Date of Birth</p>
+                 <p class="text-sm font-medium text-gray-900">${d.date_of_birth}</p></div>`;
+
+    if (d.role_key === 'learner') {
+        h += `
+            <div><p class="text-xs text-gray-400">Grade Level</p>
+                 <p class="text-sm font-medium text-gray-900">${d.grade_level}</p></div>`;
+    }
+
+    h += `
+            <div><p class="text-xs text-gray-400">School</p>
+                 <p class="text-sm font-medium text-gray-900">${d.school}</p></div>`;
+
+    if (d.role_key === 'learner') {
+        h += `
+            <div><p class="text-xs text-gray-400">Parent/Guardian</p>
+                 <p class="text-sm font-medium text-gray-900">${d.parent_guardian_name}</p></div>`;
+    }
+
+    h += `
+            <div><p class="text-xs text-gray-400">Contact Number</p>
+                 <p class="text-sm font-medium text-gray-900">${d.phone}</p></div>
+            <div><p class="text-xs text-gray-400">Email</p>
+                 <p class="text-sm font-medium text-gray-900">${d.email}</p></div>
+            <div><p class="text-xs text-gray-400">Address</p>
+                 <p class="text-sm font-medium text-gray-900">${d.address}</p></div>
+            <div><p class="text-xs text-gray-400">Emergency Contact</p>
+                 <p class="text-sm font-medium text-gray-900">${d.emergency_contact_name}</p></div>
+            <div><p class="text-xs text-gray-400">Emergency Phone</p>
+                 <p class="text-sm font-medium text-gray-900">${d.emergency_contact_phone}</p></div>
+        </div>
+    </div>`;
+    return h;
+}
+
+// -------------------------------------------------------
+// LEARNER modal
+// -------------------------------------------------------
+function buildStudentModal(d) {
+    let h = '';
+    h += buildPersonalInfo(d);
+    h += buildAcademicCards(d);
+    h += buildChart(d);
+    h += buildSubjectBars(d);
+    h += buildAttendance(d);
+    h += buildTutoring(d);
+    return h;
+}
+
+function buildAcademicCards(d) {
+    if (d.avg_score === undefined) return '';
+    return `
+    <div class="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-4
+                flex items-center justify-between">
+        <div>
+            <p class="text-xs text-gray-500">Overall Average</p>
+            <p class="text-3xl font-bold text-gray-900">${d.avg_score}%</p>
+            <p class="text-xs text-blue-600 mt-0.5">Achievement: ${getLevel(d.avg_score)}</p>
+        </div>
+        <svg class="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="8" r="6"/><path d="M9 18l3 4 3-4"/>
+        </svg>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-5 mb-4
+                flex items-center justify-between">
+        <div>
+            <p class="text-xs text-gray-500">Attendance Rate</p>
+            <p class="text-3xl font-bold text-gray-900">${d.attendance_rate}%</p>
+            <p class="text-xs text-emerald-600 mt-0.5">
+                ${d.attendance_present}/${d.attendance_total}
+            </p>
+        </div>
+        <svg class="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-4
+                flex items-center justify-between">
+        <div>
+            <p class="text-xs text-gray-500">Tutoring Sessions</p>
+            <p class="text-3xl font-bold text-gray-900">
+                ${d.total_tutoring_sessions || 0}
+            </p>
+            <p class="text-xs text-amber-700 mt-0.5">This semester</p>
+        </div>
+        <svg class="w-8 h-8 text-amber-700" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="1.5">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+    </div>`;
+}
+
+function buildChart(d) {
+    if (!d.monthly_grades || d.monthly_grades.length === 0) return '';
+    let options = '<option value="overall">Overall Average</option>';
+    if (d.enrolled_subjects) {
+        d.enrolled_subjects.forEach(s => {
+            options += `<option value="${s.name}">${s.name}</option>`;
+        });
+    }
+    return `
+    <div class="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+        <div class="flex items-center justify-between mb-4">
+            <h4 class="font-semibold text-gray-900">Academic Progress</h4>
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-500">View:</span>
+                <select id="chart-select" onchange="updateChart()"
+                        class="px-3 py-1.5 border border-gray-300
+                               rounded-md text-sm">
+                    ${options}
+                </select>
+            </div>
+        </div>
+        <canvas id="progress-chart" height="200"></canvas>
+    </div>`;
+}
+
+function initChart(d) {
+    currentData = d;
+    const canvas = document.getElementById('progress-chart');
+    if (!canvas || !d.monthly_grades || d.monthly_grades.length === 0) return;
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: d.monthly_grades.map(m => m.month),
+            datasets: [{
+                label: 'Overall Average',
+                data: d.monthly_grades.map(m => m.avg),
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59,130,246,0.1)',
+                fill: true, tension: 0.3, pointRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { min: 0, max: 100, ticks: { stepSize: 25 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function updateChart() {
+    if (!currentData) return;
+    const sel = document.getElementById('chart-select').value;
+    const canvas = document.getElementById('progress-chart');
+    if (!canvas) return;
+    if (chartInstance) chartInstance.destroy();
+
+    let labels, data, label;
+    if (sel === 'overall') {
+        labels = currentData.monthly_grades.map(m => m.month);
+        data = currentData.monthly_grades.map(m => m.avg);
+        label = 'Overall Average';
+    } else {
+        const subj = currentData.subject_monthly[sel] || [];
+        labels = subj.map(m => m.month);
+        data = subj.map(m => m.avg);
+        label = sel;
+    }
+
+    chartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: label, data: data,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59,130,246,0.1)',
+                fill: true, tension: 0.3, pointRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { min: 0, max: 100, ticks: { stepSize: 25 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function buildSubjectBars(d) {
+    if (!d.enrolled_subjects || d.enrolled_subjects.length === 0) return '';
+    let bars = '';
+    d.enrolled_subjects.forEach((s, i) => {
+        const color = subjectColors[i % subjectColors.length];
+        bars += `
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-sm text-gray-900">${s.name}</span>
+                <span class="text-sm font-medium text-gray-900">
+                    ${s.avg_score}% (${getLevel(s.avg_score)})
+                </span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2.5">
+                <div class="h-2.5 rounded-full"
+                     style="width:${s.avg_score}%;background:${color}"></div>
+            </div>
+        </div>`;
+    });
+    return `
+    <div class="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+        <h4 class="font-semibold text-gray-900 mb-4">
+            Current Marks by Subject
+        </h4>
+        <div class="space-y-4">${bars}</div>
+    </div>`;
+}
+
+function buildAttendance(d) {
+    if (!d.recent_attendance || d.recent_attendance.length === 0) return '';
+    let rows = '';
+    d.recent_attendance.forEach(r => {
+        const cls = r.status === 'present'
+            ? 'bg-emerald-50 text-emerald-700'
+            : r.status === 'late'
+                ? 'bg-amber-50 text-amber-700'
+                : 'bg-red-50 text-red-700';
+        const label = r.status.charAt(0).toUpperCase() + r.status.slice(1);
+        rows += `
+            <tr>
+                <td class="py-2 text-gray-600">${r.date}</td>
+                <td class="py-2">
+                    <span class="inline-flex px-2 py-0.5 rounded-full
+                                 text-xs font-medium ${cls}">${label}</span>
+                </td>
+            </tr>`;
+    });
+    return `
+    <div class="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+        <h4 class="font-semibold text-gray-900 mb-3">Recent Attendance</h4>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-400
+                           uppercase tracking-wide">
+                    <th class="pb-2">Date</th>
+                    <th class="pb-2">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">${rows}</tbody>
+        </table>
+    </div>`;
+}
+
+function buildTutoring(d) {
+    if (!d.tutoring_sessions || d.tutoring_sessions.length === 0) return '';
+    let items = '';
+    d.tutoring_sessions.forEach(s => {
+        items += `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="font-medium text-gray-900">${s.subject}</p>
+                    <p class="text-xs text-gray-500">with ${s.tutor}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-900">${s.date}</p>
+                    <p class="text-xs text-gray-500">${s.duration}</p>
+                </div>
+            </div>
+            ${s.notes
+                ? `<p class="text-sm text-emerald-700 italic mt-2">${s.notes}</p>`
+                : ''}
+        </div>`;
+    });
+    return `
+    <div class="bg-white border border-gray-200 rounded-xl p-5">
+        <h4 class="font-semibold text-gray-900 mb-3">
+            Tutoring Session History
+        </h4>
+        <div class="space-y-3">${items}</div>
+    </div>`;
+}
+
+// -------------------------------------------------------
+// ASSISTANT modal
+// -------------------------------------------------------
+function buildAssistantModal(d) {
+    let h = buildPersonalInfo(d);
+    h += `
+    <div class="bg-gray-50 rounded-xl p-5 mb-4">
+        <h4 class="font-semibold text-gray-900 mb-3">
+            Professional Information
+        </h4>
+        <div class="space-y-2.5">
+            <div><p class="text-xs text-gray-400">Subject</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.subject_taught}</p></div>
+            <div><p class="text-xs text-gray-400">Grade Level</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.grade_levels_taught}</p></div>
+            <div><p class="text-xs text-gray-400">Experience</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.experience_years} years</p></div>
+            <div><p class="text-xs text-gray-400">Joined Date</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.date_joined}</p></div>
+            <div><p class="text-xs text-gray-400">Qualifications</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.qualifications}</p></div>
+            <div><p class="text-xs text-gray-400">Certifications</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.certifications}</p></div>
+            <div><p class="text-xs text-gray-400">Specializations</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.specializations}</p></div>
+        </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="bg-white border border-gray-200 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Students Taught</p>
+            <p class="text-2xl font-bold text-gray-900">
+                ${d.students_taught}
+            </p>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Years at Inkululeko</p>
+            <p class="text-2xl font-bold text-gray-900">
+                ${d.experience_years || 0}
+            </p>
+        </div>
+    </div>`;
+
+    if (d.recent_activity && d.recent_activity.length > 0) {
+        h += `
+        <div class="bg-white border border-gray-200 rounded-xl p-5">
+            <h4 class="font-semibold text-gray-900 mb-3">
+                Recent Activity
+            </h4>
+            <div class="space-y-3">`;
+        d.recent_activity.forEach(a => {
+            h += `
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm text-gray-900">${a.description}</p>
+                    <p class="text-xs text-gray-400">${a.timestamp}</p>
+                </div>
+            </div>`;
+        });
+        h += '</div></div>';
+    }
+    return h;
+}
+
+// -------------------------------------------------------
+// MENTOR modal
+// -------------------------------------------------------
+function buildMentorModal(d) {
+    let h = buildPersonalInfo(d);
+    h += `
+    <div class="bg-gray-50 rounded-xl p-5 mb-4">
+        <h4 class="font-semibold text-gray-900 mb-3">
+            Professional Information
+        </h4>
+        <div class="space-y-2.5">
+            <div><p class="text-xs text-gray-400">Organization</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.organization}</p></div>
+            <div><p class="text-xs text-gray-400">Focus Areas</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.focus_areas}</p></div>
+            <div><p class="text-xs text-gray-400">Background</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.background}</p></div>
+            <div><p class="text-xs text-gray-400">Joined Date</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.date_joined}</p></div>
+            <div><p class="text-xs text-gray-400">Availability</p>
+                 <p class="text-sm font-medium text-gray-900">
+                    ${d.availability}</p></div>
+        </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="bg-white border border-gray-200 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Total Hours</p>
+            <p class="text-2xl font-bold text-gray-900">${d.total_hours}</p>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Students Mentored</p>
+            <p class="text-2xl font-bold text-gray-900">
+                ${d.students_mentored}
+            </p>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Sessions This Month</p>
+            <p class="text-2xl font-bold text-gray-900">
+                ${d.sessions_this_month}
+            </p>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Months Active</p>
+            <p class="text-2xl font-bold text-gray-900">
+                ${d.months_active}
+            </p>
+        </div>
+    </div>`;
+
+    if (d.recent_sessions && d.recent_sessions.length > 0) {
+        h += `
+        <div class="bg-white border border-gray-200 rounded-xl p-5">
+            <h4 class="font-semibold text-gray-900 mb-3">
+                Recent Activity
+            </h4>
+            <div class="space-y-3">`;
+        d.recent_sessions.forEach(s => {
+            h += `
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-900">
+                            Tutoring session with ${s.learner} - ${s.subject}
+                        </p>
+                        <p class="text-xs text-gray-400">${s.date}</p>
+                    </div>
+                    <p class="text-sm text-gray-500">${s.duration}</p>
+                </div>
+            </div>`;
+        });
+        h += '</div></div>';
+    }
+    return h;
+}
+</script>
+{% endblock %}

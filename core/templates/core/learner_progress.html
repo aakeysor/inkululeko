@@ -1,10 +1,145 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'core/base.html' %}
+{% block title %}{{ learner.get_full_name }} — Progress{% endblock %}
 
-</body>
-</html>
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">
+            {{ learner.get_full_name }}
+        </h1>
+        <p class="text-gray-500 text-sm mt-1">
+            {% if learner.school %}{{ learner.school.name }}{% endif %}
+        </p>
+    </div>
+    <a href="{% url 'dashboard' %}"
+       class="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+        ← Back
+    </a>
+</div>
+
+<!-- Per-Subject Stats -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+    {% for stat in subject_stats %}
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-3">
+            {{ stat.subject.name }}
+        </h3>
+        <div class="space-y-3">
+            <div>
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="text-gray-500">Avg Score</span>
+                    <span class="font-medium text-gray-900">
+                        {{ stat.avg_score }}%
+                    </span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full transition-all"
+                         style="width: {{ stat.avg_score }}%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="text-gray-500">Attendance</span>
+                    <span class="font-medium text-gray-900">
+                        {{ stat.attendance_rate }}%
+                    </span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-emerald-500 h-2 rounded-full transition-all"
+                         style="width: {{ stat.attendance_rate }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-gray-400 col-span-2">No enrolled subjects.</p>
+    {% endfor %}
+</div>
+
+<!-- Grade History -->
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-900">Grade History</h2>
+    </div>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-gray-100 text-left text-xs
+                       font-medium text-gray-400 uppercase tracking-wide">
+                <th class="px-6 py-3">Date</th>
+                <th class="px-6 py-3">Subject</th>
+                <th class="px-6 py-3">Assessment</th>
+                <th class="px-6 py-3">Score</th>
+                <th class="px-6 py-3">Level</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+            {% for g in grades %}
+            <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-3 text-gray-600">{{ g.date }}</td>
+                <td class="px-6 py-3 text-gray-600">{{ g.subject.name }}</td>
+                <td class="px-6 py-3 text-gray-600">{{ g.assessment_name }}</td>
+                <td class="px-6 py-3 font-medium text-gray-900">
+                    {{ g.score }}/{{ g.max_score }}
+                </td>
+                <td class="px-6 py-3">
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs
+                                 font-medium bg-blue-50 text-blue-700">
+                        {{ g.grade_letter }}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                    No grades recorded yet.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Recent Attendance -->
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-900">Recent Attendance</h2>
+    </div>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-gray-100 text-left text-xs
+                       font-medium text-gray-400 uppercase tracking-wide">
+                <th class="px-6 py-3">Date</th>
+                <th class="px-6 py-3">Subject</th>
+                <th class="px-6 py-3">Status</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+            {% for r in attendance %}
+            <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-3 text-gray-600">{{ r.date }}</td>
+                <td class="px-6 py-3 text-gray-600">{{ r.subject.name }}</td>
+                <td class="px-6 py-3">
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs
+                                 font-medium
+                        {% if r.status == 'present' %}
+                            bg-emerald-50 text-emerald-700
+                        {% elif r.status == 'late' %}
+                            bg-amber-50 text-amber-700
+                        {% else %}
+                            bg-red-50 text-red-700
+                        {% endif %}">
+                        {{ r.get_status_display }}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3" class="px-6 py-12 text-center text-gray-400">
+                    No attendance records.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

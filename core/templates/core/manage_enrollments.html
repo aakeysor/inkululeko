@@ -1,0 +1,99 @@
+{% extends 'core/base.html' %}
+{% block title %}Manage Enrolments{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">Class Registration</h1>
+    <p class="text-gray-500 text-sm mt-1">
+        Register learners for Inkululeko programme classes
+    </p>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+    <h2 class="font-semibold text-gray-900 mb-3">Select a Learner</h2>
+    <form method="get" class="flex items-end gap-4">
+        <div class="flex-1">
+            <select name="learner" onchange="this.form.submit()"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-md
+                           text-sm focus:outline-none focus:ring-2
+                           focus:ring-blue-500 focus:border-blue-500">
+                <option value="">— Choose a learner —</option>
+                {% for l in learners %}
+                <option value="{{ l.id }}"
+                    {% if selected_learner and selected_learner.id == l.id %}
+                        selected{% endif %}>
+                    {{ l.get_full_name }} ({{ l.display_id }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+{% if selected_learner %}
+<div class="bg-white rounded-xl border border-gray-200 p-6">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h2 class="font-semibold text-gray-900">
+                {{ selected_learner.get_full_name }}
+            </h2>
+            <p class="text-sm text-gray-500">
+                {{ selected_learner.display_id }}
+                {% if selected_learner.school %}
+                    · {{ selected_learner.school.name }}
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="learner_id" value="{{ selected_learner.id }}">
+
+        <p class="text-sm text-gray-600 mb-4">
+            Select all classes this learner should be registered for:
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+            {% for subj in subjects %}
+            <label class="flex items-center gap-3 bg-gray-50 rounded-lg p-4
+                          border border-gray-100 cursor-pointer
+                          hover:border-blue-300 hover:bg-blue-50/30
+                          transition-all">
+                <input type="checkbox" name="subjects" value="{{ subj.id }}"
+                       {% if subj.id in enrolled_subjects %}checked{% endif %}
+                       class="w-4 h-4 text-blue-600 rounded
+                              focus:ring-blue-500">
+                <span class="text-sm font-medium text-gray-700">
+                    {{ subj.name }}
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <div class="flex items-center justify-between">
+            <p class="text-xs text-gray-400">
+                <span id="check-count">0</span> classes selected
+            </p>
+            <button type="submit"
+                    class="bg-brand-600 hover:bg-brand-700 text-white px-6
+                           py-2.5 rounded-lg text-sm font-medium
+                           transition-colors">
+                Save Registration
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function updateCount() {
+    const count = document.querySelectorAll('input[name="subjects"]:checked').length;
+    document.getElementById('check-count').textContent = count;
+}
+document.querySelectorAll('input[name="subjects"]').forEach(cb => {
+    cb.addEventListener('change', updateCount);
+});
+updateCount();
+</script>
+{% endif %}
+{% endblock %}

@@ -10,41 +10,49 @@
 </div>
 
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
+    <a href="{% url 'user_list' %}?role=learner"
+       class="bg-white rounded-xl border border-gray-200 p-5
+              hover:border-gray-300 hover:shadow-sm transition-all">
         <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">
             Learners
         </p>
         <p class="text-3xl font-bold text-gray-900 mt-1">
             {{ total_learners }}
         </p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
+    </a>
+    <a href="{% url 'user_list' %}?role=assistant"
+       class="bg-white rounded-xl border border-gray-200 p-5
+              hover:border-gray-300 hover:shadow-sm transition-all">
         <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">
             Assistants
         </p>
         <p class="text-3xl font-bold text-gray-900 mt-1">
             {{ total_assistants }}
         </p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
+    </a>
+    <a href="{% url 'user_list' %}?role=mentor"
+       class="bg-white rounded-xl border border-gray-200 p-5
+              hover:border-gray-300 hover:shadow-sm transition-all">
         <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">
             Mentors
         </p>
         <p class="text-3xl font-bold text-gray-900 mt-1">
             {{ total_mentors }}
         </p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
+    </a>
+    <a href="{% url 'manage_schools' %}"
+       class="bg-white rounded-xl border border-gray-200 p-5
+              hover:border-gray-300 hover:shadow-sm transition-all">
         <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">
             Schools
         </p>
         <p class="text-3xl font-bold text-gray-900 mt-1">
             {{ total_schools }}
         </p>
-    </div>
+    </a>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
     <a href="{% url 'manage_users' %}"
        class="bg-white rounded-xl border border-gray-200 p-5
               hover:border-gray-300 hover:shadow-sm transition-all group">
@@ -64,58 +72,48 @@
               hover:border-gray-300 hover:shadow-sm transition-all group">
         <p class="font-semibold text-gray-900 group-hover:text-brand-600
                   transition-colors">Record Grades</p>
-        <p class="text-sm text-gray-500 mt-0.5">
-            Enter results or scan report cards
-        </p>
+        <p class="text-sm text-gray-500 mt-0.5">Enter results or scan report cards</p>
+    </a>
+    <a href="{% url 'manage_schools' %}"
+       class="bg-white rounded-xl border border-gray-200 p-5
+              hover:border-gray-300 hover:shadow-sm transition-all group">
+        <p class="font-semibold text-gray-900 group-hover:text-brand-600
+                  transition-colors">Manage Schools</p>
+        <p class="text-sm text-gray-500 mt-0.5">View and add partner schools</p>
     </a>
 </div>
 
+<!-- Recent Activity -->
 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-100">
-        <h2 class="font-semibold text-gray-900">Recent Attendance</h2>
+        <h2 class="font-semibold text-gray-900">Recent Activity</h2>
     </div>
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="border-b border-gray-100 text-left text-xs
-                       font-medium text-gray-400 uppercase tracking-wide">
-                <th class="px-6 py-3">Learner</th>
-                <th class="px-6 py-3">Subject</th>
-                <th class="px-6 py-3">Date</th>
-                <th class="px-6 py-3">Status</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-            {% for record in recent_attendance %}
-            <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-6 py-3 font-medium text-gray-900">
-                    {{ record.learner.get_full_name }}
-                </td>
-                <td class="px-6 py-3 text-gray-600">
-                    {{ record.subject.name }}
-                </td>
-                <td class="px-6 py-3 text-gray-600">{{ record.date }}</td>
-                <td class="px-6 py-3">
-                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs
-                                 font-medium
-                        {% if record.status == 'present' %}
-                            bg-emerald-50 text-emerald-700
-                        {% elif record.status == 'late' %}
-                            bg-amber-50 text-amber-700
-                        {% else %}
-                            bg-red-50 text-red-700
-                        {% endif %}">
-                        {{ record.get_status_display }}
-                    </span>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4" class="px-6 py-12 text-center text-gray-400">
-                    No attendance records yet.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="divide-y divide-gray-50">
+        {% for activity in recent_activity %}
+        <div class="px-6 py-4 flex items-start gap-3">
+            <div class="mt-1.5 shrink-0">
+                {% if activity.action_type == 'attendance' %}
+                    <span class="inline-flex w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                {% elif activity.action_type == 'grade' %}
+                    <span class="inline-flex w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                {% elif activity.action_type == 'login' %}
+                    <span class="inline-flex w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                {% elif activity.action_type == 'user_created' or activity.action_type == 'enrollment' %}
+                    <span class="inline-flex w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                {% else %}
+                    <span class="inline-flex w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+                {% endif %}
+            </div>
+            <div>
+                <p class="text-sm text-gray-900">{{ activity.description }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">{{ activity.timestamp|timesince }} ago</p>
+            </div>
+        </div>
+        {% empty %}
+        <div class="px-6 py-12 text-center text-gray-400">
+            No recent activity.
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}

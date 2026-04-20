@@ -1,0 +1,102 @@
+{% extends 'core/base.html' %}
+{% block title %}Manage Schools{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">Manage Schools</h1>
+    <p class="text-gray-500 text-sm mt-1">
+        View partner schools and add new ones
+    </p>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+    <h2 class="font-semibold text-gray-900 mb-4">Add New School</h2>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    School Name
+                </label>
+                {{ form.name }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Location
+                </label>
+                {{ form.location }}
+            </div>
+        </div>
+        <button type="submit"
+                class="bg-brand-600 hover:bg-brand-700 text-white px-6
+                       py-2.5 rounded-lg text-sm font-medium
+                       transition-colors">
+            Add School
+        </button>
+    </form>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-900">All Schools</h2>
+    </div>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-gray-100 text-left text-xs
+                       font-medium text-gray-400 uppercase tracking-wide">
+                <th class="px-6 py-3">School Name</th>
+                <th class="px-6 py-3">Location</th>
+                <th class="px-6 py-3">Learners</th>
+                <th class="px-6 py-3">Assistants</th>
+                <th class="px-6 py-3"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+            {% for s in school_data %}
+            <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-3 font-medium text-gray-900">
+                    {{ s.school.name }}
+                </td>
+                <td class="px-6 py-3 text-gray-600">
+                    {{ s.school.location }}
+                </td>
+                <td class="px-6 py-3">
+                    <a href="{% url 'school_learners' s.school.id %}"
+                       class="text-brand-600 hover:text-brand-700 font-medium
+                              transition-colors">
+                        {{ s.learner_count }}
+                    </a>
+                </td>
+                <td class="px-6 py-3">
+                    <a href="{% url 'school_assistants' s.school.id %}"
+                       class="text-brand-600 hover:text-brand-700 font-medium
+                              transition-colors">
+                        {{ s.assistant_count }}
+                    </a>
+                </td>
+                <td class="px-6 py-3 text-right">
+                    <form method="post"
+                          action="{% url 'delete_school' s.school.id %}"
+                          onsubmit="return confirm('Delete {{ s.school.name }}? All associated subjects and data will be removed.')">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="text-red-400 hover:text-red-600
+                                       text-xs px-2 py-1 border border-red-200
+                                       rounded-md hover:bg-red-50
+                                       transition-colors">
+                            Delete
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                    No schools added yet.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

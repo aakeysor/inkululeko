@@ -12,7 +12,7 @@ def get_chat_response(user_message, user_role, conversation_history=None):
     system_prompt = f"""You are a helpful support assistant for the Inkululeko
 Database, an after-school support program application used in Makhanda,
 South Africa. The program partners with three schools: Ntsika Secondary,
-Nombulelo Secondary, and Graeme College.
+Andrew Moyakhe, and Nathaniel Nyaluza High School.
 
 The user you are speaking with has the role: {user_role}.
 
@@ -66,7 +66,7 @@ Respond in 2-3 sentences maximum."""
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash-lite",
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
@@ -75,5 +75,7 @@ Respond in 2-3 sentences maximum."""
         return response.text
     except Exception as e:
         return (
-            f"DEBUG ERROR: {type(e).__name__}: {e}"
+            "I'm sorry, I'm having trouble connecting right now. "
+            "Please try again in a moment, or contact the program "
+            "administrators directly for help."
         )

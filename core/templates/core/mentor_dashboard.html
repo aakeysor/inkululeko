@@ -11,6 +11,69 @@
     </p>
 </div>
 
+{% if pending_requests %}
+<!-- Pending Requests -->
+<div class="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-8">
+    <h2 class="font-semibold text-amber-800 mb-4">
+        Pending Requests ({{ pending_requests|length }})
+    </h2>
+    <div class="space-y-3">
+        {% for req in pending_requests %}
+        <div class="bg-white rounded-xl border border-amber-100 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="font-medium text-gray-900">
+                        {{ req.learner.get_full_name }}
+                    </p>
+                    <p class="text-sm text-gray-500 mt-0.5">
+                        {% if req.is_general %}
+                            General mentoring
+                        {% else %}
+                            {{ req.subject.name }}
+                        {% endif %}
+                        · Requested {{ req.created_at|timesince }} ago
+                    </p>
+                    {% if req.message %}
+                    <p class="text-sm text-gray-600 italic mt-2">
+                        "{{ req.message }}"
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-2">
+                    <form method="post"
+                          action="{% url 'respond_mentor_request' req.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="approve">
+                        <button type="submit"
+                                class="text-xs px-3 py-1.5 bg-emerald-600
+                                       hover:bg-emerald-700 text-white
+                                       rounded-md font-medium
+                                       transition-colors">
+                            Accept
+                        </button>
+                    </form>
+                    <form method="post"
+                          action="{% url 'respond_mentor_request' req.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="deny">
+                        <button type="submit"
+                                class="text-xs px-3 py-1.5 bg-white
+                                       border border-gray-300
+                                       hover:bg-gray-50 text-gray-700
+                                       rounded-md font-medium
+                                       transition-colors">
+                            Decline
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Mentees -->
 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-100">
         <h2 class="font-semibold text-gray-900">Your Mentees</h2>
