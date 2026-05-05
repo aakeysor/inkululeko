@@ -1,11 +1,16 @@
-from google import genai
+import base64
 import json
+import logging
+from google import genai
+from google.genai import types
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 def extract_grades_from_image(image_file):
     """
-    Use Gemini's vision capability to read a report card photo
+    Use Gemini's vision capability to read a South African report card photo
     and extract structured grade data.
 
     Returns a list of dicts:
@@ -15,12 +20,16 @@ def extract_grades_from_image(image_file):
 
     # Read the image bytes
     image_bytes = image_file.read()
+
     content_type = getattr(image_file, 'content_type', 'image/jpeg')
     if content_type not in ('image/jpeg', 'image/png', 'image/webp'):
         content_type = 'image/jpeg'
 
-    prompt = """Examine this report card image carefully.
-Extract every subject name and its corresponding score.
+    prompt = """Examine this South African school report card image carefully.
+
+This report card may have multiple terms (Term 1, Term 2, Term 3, Final).
+Extract ONLY the MOST RECENT term's "Final %" column for each subject.
+If a "Final for Year" column exists, use that instead.
 
 Return ONLY a valid JSON array with no other text, like this:
 [
@@ -29,10 +38,13 @@ Return ONLY a valid JSON array with no other text, like this:
 ]
 
 Rules:
-- Use the full subject name as written on the report.
-- If the score is a percentage, set max_score to 100.
-- If the score is out of a different total (e.g. 45/50), use that total.
+- Use the CORE subject name only, without grade level suffixes.
+  For example: "Mathematics" not "Mathematics (Gr 08)".
+  "English" or "English First Additional Language" not "English First Additional Language (Gr 08)".
+  "IsiXhosa" or "IsiXhosa Home Language" not "IsiXhosa Home Language (Gr 08)".
+- The score is a percentage — set max_score to 100.
 - If you cannot read a score clearly, skip that subject.
+- Do NOT include the "Learner Total / Average" row.
 - Return an empty array [] if you cannot extract any grades.
 - Return ONLY the JSON array, nothing else."""
 
@@ -40,17 +52,23 @@ Rules:
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=[
-                {
-                    "inline_data": {
-                        "mime_type": content_type,
-                        "data": image_bytes,
-                    }
-                },
-                prompt,
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part(
+                            inline_data=types.Blob(
+                                mime_type=content_type,
+                                data=image_bytes,
+                            )
+                        ),
+                        types.Part(text=prompt),
+                    ],
+                )
             ],
         )
 
         raw = response.text.strip()
+        logger.info(f"Gemini OCR raw response: {raw[:500]}")
 
         # Handle markdown code block wrapping
         if raw.startswith('```'):
@@ -63,7 +81,10 @@ Rules:
         if start != -1 and end > start:
             raw = raw[start:end]
 
-        return json.loads(raw)
+        result = json.loads(raw)
+        logger.info(f"Gemini OCR extracted {len(result)} grades")
+        return result
 
     except Exception as e:
+        logger.error(f"Gemini OCR error: {e}")
         return []
