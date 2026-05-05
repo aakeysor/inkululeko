@@ -130,6 +130,16 @@ const subjectColors = [
 let chartInstance = null;
 let currentData = null;
 
+function getLevel(pct) {
+    if (pct >= 80) return 7;
+    if (pct >= 70) return 6;
+    if (pct >= 60) return 5;
+    if (pct >= 50) return 4;
+    if (pct >= 40) return 3;
+    if (pct >= 30) return 2;
+    return 1;
+}
+
 // -------------------------------------------------------
 // Open modal and route to the correct builder
 // -------------------------------------------------------
@@ -161,6 +171,17 @@ async function openUserDetail(userId) {
         } else {
             body.innerHTML = buildPersonalInfo(d);
         }
+
+        // Add delete button at the bottom of the modal body
+        body.innerHTML += `
+        <div class="mt-6 pt-4 border-t border-gray-100">
+            <button onclick="deleteUser(${userId}, '${d.full_name.replace(/'/g, "\\'")}')"
+                    class="w-full bg-red-50 hover:bg-red-100 text-red-700
+                           px-4 py-2.5 rounded-lg text-sm font-medium
+                           transition-colors">
+                Delete User
+            </button>
+        </div>`;
     } catch (err) {
         body.innerHTML = '<p class="text-red-600 text-sm">Failed to load user details.</p>';
     }
@@ -612,6 +633,37 @@ function buildMentorModal(d) {
         h += '</div></div>';
     }
     return h;
+}
+
+function getCookie(name) {
+    let val = null;
+    document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name + '=')) {
+            val = decodeURIComponent(c.substring(name.length + 1));
+        }
+    });
+    return val;
+}
+
+async function deleteUser(userId, userName) {
+    if (!confirm(`Are you sure you want to delete "${userName}"? This action cannot be undone.`)) return;
+
+    try {
+        const res = await fetch(`/users/${userId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        if (res.redirected) {
+            window.location.href = res.url;
+        } else {
+            window.location.reload();
+        }
+    } catch (err) {
+        alert('Failed to delete user. Please try again.');
+    }
 }
 </script>
 {% endblock %}

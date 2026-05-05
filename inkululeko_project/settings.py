@@ -25,7 +25,10 @@ SECRET_KEY = 'django-insecure-_z7ye9-&m@$38@q&t&@trhy4_8(rb!gxj0o8$n7lu*3o9jcwev
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'aakeysor.pythonanywhere.com']
+CSRF_TRUSTED_ORIGINS = [
+    'https://aakeysor.pythonanywhere.com',
+]
 
 
 # Application definition
@@ -140,4 +143,3 @@ except ImportError:
 
 # Hosting
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']

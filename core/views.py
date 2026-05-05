@@ -97,8 +97,7 @@ def dashboard_view(request):
         from django.db.models import Max, Min
 
         subjects = (
-            Subject.objects.filter(school=user.school)
-            if user.school else Subject.objects.none()
+            Subject.objects.all()
         )
 
         selected_subject_id = request.GET.get('subject', '')
@@ -570,7 +569,7 @@ def scan_report_card_view(request):
     image = upload_form.cleaned_data['image']
 
     # Extract grades
-    extracted = extracted_grades_from_image(image)
+    extracted = extract_grades_from_image(image)
 
     if not extracted:
         messages.error(
@@ -580,13 +579,11 @@ def scan_report_card_view(request):
         return redirect('record_grades')
 
     # Try to match extracted subject names to database subjects
-    learner_school = learner.school
     matched_grades = []
     for entry in extracted:
         subject_name = entry.get('subject', '')
         subject = Subject.objects.filter(
-            name_icontains=subject_name,
-            school=learner_school,
+            name__icontains=subject_name,
         ).first()
         matched_grades.append({
             'subject_name': subject_name,
@@ -599,7 +596,7 @@ def scan_report_card_view(request):
     return render(request, 'core/confirm_scanned_grades.html', {
         'learner': learner,
         'matched_grades': matched_grades,
-        'subjects': Subject.objects.filter(school=learner_school),
+        'subjects': Subject.objects.all(),
     })
 
 
