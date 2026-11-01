@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inkululeko attendance register (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f9fafb;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --line: #e5e7eb;
+  --line-strong: #c3c8d1;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --faint: #9ca3af;
+  --brand: #364fc7;
+  --brand-hover: #2b44a8;
+  --brand-tint: #eef2ff;
+  --good: #047857;
+  --good-bg: #d1fae5;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --bad: #b91c1c;
+  --bad-bg: #fee2e2;
+  --gap: #f6b26b;
+  --hatch: #e5e7eb;
+  --today: #fff7e6;
+  --shadow: 0 8px 24px rgba(17, 24, 39, 0.14);
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131d;
+    --surface: #151b27;
+    --surface-2: #1b2232;
+    --line: #273044;
+    --line-strong: #3c475f;
+    --text: #e6e9ef;
+    --muted: #9aa3b5;
+    --faint: #6d778b;
+    --brand: #7b8ff5;
+    --brand-hover: #95a6ff;
+    --brand-tint: #1d2647;
+    --good: #6ee7b7;
+    --good-bg: #0f3a2c;
+    --warn: #fcd34d;
+    --warn-bg: #3d2f0c;
+    --bad: #fca5a5;
+    --bad-bg: #431a1a;
+    --gap: #a8703a;
+    --hatch: #222a3b;
+    --today: #2a2414;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131d;
+  --surface: #151b27;
+  --surface-2: #1b2232;
+  --line: #273044;
+  --line-strong: #3c475f;
+  --text: #e6e9ef;
+  --muted: #9aa3b5;
+  --faint: #6d778b;
+  --brand: #7b8ff5;
+  --brand-hover: #95a6ff;
+  --brand-tint: #1d2647;
+  --good: #6ee7b7;
+  --good-bg: #0f3a2c;
+  --warn: #fcd34d;
+  --warn-bg: #3d2f0c;
+  --bad: #fca5a5;
+  --bad-bg: #431a1a;
+  --gap: #a8703a;
+  --hatch: #222a3b;
+  --today: #2a2414;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+
+/* ---------- Top area ---------- */
+.top {
+  padding: 18px 24px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.subtitle { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand);
+  background: var(--brand-tint);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.seg button {
+  border: 0;
+  background: var(--surface);
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--line-strong); }
+.seg button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+.month-nav { display: inline-flex; align-items: center; gap: 4px; }
+.month-nav .label { min-width: 104px; text-align: center; font-weight: 600; }
+.icon-btn {
+  width: 32px; height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  display: inline-grid; place-items: center;
+}
+.icon-btn:disabled { opacity: 0.4; cursor: default; }
+select, input[type="search"] {
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 10px;
+  font-size: 13px;
+}
+input[type="search"] { width: 190px; }
+.spacer { flex: 1; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; color: var(--muted); }
+.stats strong { color: var(--text); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* ---------- Register ---------- */
+.register-wrap {
+  --sticky-w: 502px;
+  height: clamp(420px, 72vh, 900px);
+  overflow: auto;
+  background: var(--surface);
+  position: relative;
+}
+table { border-collapse: separate; border-spacing: 0; font-size: 13px; }
+th, td {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 0;
+  text-align: center;
+  white-space: nowrap;
+  background: var(--surface);
+}
+thead th {
+  position: sticky;
+  z-index: 3;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+thead tr.r1 th { top: 0; height: 28px; }
+thead tr.r2 th { top: 28px; height: 34px; }
+thead tr.r3 th { top: 62px; height: 42px; }
+thead th.sum { top: 0; z-index: 6; vertical-align: bottom; padding: 0 8px 10px; text-align: left; }
+thead th.sum.num { text-align: center; }
+thead tr.r1 th.month { color: var(--text); font-size: 12px; text-align: left; padding: 0; }
+th.month span { position: sticky; left: calc(var(--sticky-w) + 10px); padding: 0 10px; }
+thead tr.r2 th.week { text-transform: none; letter-spacing: 0; font-size: 12px; }
+thead tr.r2 th.week span { display: block; font-weight: 400; color: var(--faint); font-size: 11px; }
+th.gap, td.gap { background: var(--gap); min-width: 10px; width: 10px; border-right: 0; }
+thead th.gap { top: 0; z-index: 4; }
+
+/* sticky identity and summary columns */
+.s1, .s2, .s3, .s4, .s5 { position: sticky; z-index: 2; }
+thead .s1, thead .s2, thead .s3, thead .s4, thead .s5 { z-index: 6; }
+thead th.sum.s1, thead th.sum.s2 { z-index: 7; }
+.s1 { left: 0; min-width: 84px; width: 84px; max-width: 84px; }
+.s2 { left: 84px; min-width: 176px; width: 176px; max-width: 176px; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+.s3 { left: 260px; min-width: 70px; width: 70px; max-width: 70px; }
+.s4 { left: 330px; min-width: 76px; width: 76px; max-width: 76px; }
+.s5 { left: 406px; min-width: 96px; width: 96px; max-width: 96px; border-right: 2px solid var(--line-strong); }
+thead th.sum { white-space: normal; line-height: 1.25; }
+td.s1 { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+td.s2 { padding: 0 10px; font-weight: 500; }
+td.s2 small { display: block; color: var(--faint); font-weight: 400; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+td.s3, td.s4 { font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  .s1 { display: none; }
+  .s2 { left: 0; min-width: 140px; width: 140px; border-right: 2px solid var(--line-strong); }
+  .s3, .s4, .s5 { position: static; }
+  thead th.s3, thead th.s4, thead th.s5 { position: sticky; left: auto; }
+  .s5 { border-right: 1px solid var(--line); }
+  .s2 { max-width: 140px; }
+  .register-wrap { --sticky-w: 140px; }
+  .top { padding: 12px 16px 10px; }
+  .subtitle, .badge { display: none; }
+  .controls { margin-top: 10px; gap: 8px; }
+  input[type="search"] { width: 100%; }
+  .stats { gap: 4px 14px; margin-top: 10px; font-size: 12px; }
+  .foot { padding: 8px 16px; gap: 6px 12px; }
+  .foot .hint, .foot .note { display: none; }
+}
+
+tbody tr { height: 44px; }
+tbody tr:hover td { background: var(--surface-2); }
+tbody tr:hover td.gap { background: var(--gap); }
+
+/* day header buttons */
+th.day { min-width: 36px; width: 36px; }
+th.day button {
+  width: 100%; height: 100%;
+  border: 0; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; color: var(--muted);
+  font-size: 10px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+}
+th.day button b { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: 0; }
+th.day button:hover { background: var(--brand-tint); }
+th.day.today button { background: var(--today); }
+th.day.today button b { color: var(--brand); }
+th.day.future button b { color: var(--faint); }
+th.day.closed, td.closed {
+  background-image: repeating-linear-gradient(135deg, var(--hatch) 0 4px, transparent 4px 9px);
+}
+th.day.outside, td.outside { background: var(--surface-2); }
+th.wkpct { min-width: 48px; width: 48px; }
+
+/* checkboxes */
+td.cell input {
+  appearance: none; -webkit-appearance: none;
+  width: 20px; height: 20px; margin: 0;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+td.cell input:checked {
+  background: var(--brand) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+  border-color: var(--brand);
+}
+td.cell input:disabled { cursor: default; opacity: 0.35; }
+td.today { background: var(--today); }
+
+/* percentage chips */
+.pct {
+  display: inline-block;
+  min-width: 40px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 12px;
+}
+.pct.good { background: var(--good-bg); color: var(--good); }
+.pct.warn { background: var(--warn-bg); color: var(--warn); }
+.pct.bad  { background: var(--bad-bg);  color: var(--bad); }
+.pct.none { color: var(--faint); font-weight: 400; }
+td.wkpct .pct { min-width: 34px; padding: 1px 4px; font-size: 11px; }
+
+/* ---------- Footer ---------- */
+.foot {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+  padding: 10px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 12px; color: var(--muted);
+}
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--line-strong); display: inline-block; }
+.sw.on { background: var(--brand); border-color: var(--brand); }
+.sw.closed { background-image: repeating-linear-gradient(135deg, var(--hatch) 0 3px, transparent 3px 6px); }
+.sw.future { opacity: 0.35; }
+.sw.today { background: var(--today); }
+.link-btn { border: 0; background: none; color: var(--brand); cursor: pointer; padding: 0; font-size: 12px; font-weight: 500; }
+.link-btn:hover { color: var(--brand-hover); text-decoration: underline; }
+
+/* ---------- Day menu ---------- */
+.menu {
+  position: fixed; z-index: 50;
+  min-width: 230px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 6px;
+}
+.menu[hidden] { display: none; }
+.menu h2 { margin: 6px 10px 2px; font-size: 13px; font-weight: 600; }
+.menu p { margin: 0 10px 8px; font-size: 12px; color: var(--muted); }
+.menu button {
+  display: block; width: 100%;
+  text-align: left; border: 0; background: none;
+  padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.menu button:hover { background: var(--surface-2); }
+.menu button.danger { color: var(--bad); }
+
+.empty { padding: 48px 24px; text-align: center; color: var(--muted); }
+
+/* ---------- How it works ---------- */
+.help { padding: 36px 24px 56px; border-top: 1px solid var(--line); }
+.help-inner { max-width: 760px; }
+.help h2 { margin: 0 0 6px; font-size: 18px; font-weight: 700; }
+.help .lede { margin: 0 0 8px; color: var(--muted); line-height: 1.6; }
+.help h3 { margin: 26px 0 6px; font-size: 15px; font-weight: 600; }
+.help p, .help li { margin: 0 0 8px; line-height: 1.65; font-size: 14px; }
+.help ul { margin: 6px 0 8px; padding-left: 20px; }
+.help li { margin-bottom: 6px; }
+.help strong { font-weight: 600; }
+@media (max-width: 760px) { .help { padding: 28px 16px 44px; } }
+
+/* ---------- Holidays dialog ---------- */
+.btn {
+  height: 34px; padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--surface); font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.btn.primary:hover { background: var(--brand-hover); }
+.link-btn.danger { color: var(--bad); }
+dialog {
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface); color: var(--text);
+  padding: 0; width: min(540px, calc(100vw - 32px));
+  max-height: calc(100% - 48px);
+  box-shadow: var(--shadow);
+}
+dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 0; margin: 0; }
+.dlg-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.dlg-intro { margin: 6px 20px 10px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.hol-list { list-style: none; margin: 0; padding: 0 20px; max-height: 280px; overflow: auto; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.hol-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; }
+.hol-list li + li { border-top: 1px solid var(--line); }
+.hol-list strong { display: block; font-weight: 600; font-size: 13px; }
+.hol-list span { font-size: 12px; color: var(--muted); }
+.hol-list .none { color: var(--muted); font-size: 13px; padding: 14px 0; }
+.hol-form { padding: 14px 20px 20px; display: grid; gap: 10px; }
+.hol-form h3 { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
+.hol-form label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.hol-form input {
+  height: 34px; border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--surface); color: var(--text); padding: 0 10px; font-size: 13px;
+}
+.hol-form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hol-form .btn.primary { justify-self: start; }
+.err { margin: 0; color: var(--bad); font-size: 12px; }
+.err:empty { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  td.cell input { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="title-row">
+    <div>
+      <h1>Attendance register</h1>
+      <p class="subtitle">Tick a box when a learner is present. Totals and weekly percentages update as you go.</p>
+    </div>
+    <span class="badge">Prototype with sample learners</span>
+  </div>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="View">
+      <button type="button" id="view-month" aria-pressed="true">Month</button>
+      <button type="button" id="view-year" aria-pressed="false">Full year</button>
+    </div>
+    <div class="month-nav" id="month-nav">
+      <button class="icon-btn" id="prev-month" type="button" aria-label="Previous month">
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="label" id="month-label">October</span>
+      <button class="icon-btn" id="next-month" type="button" aria-label="Next month">
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <span class="spacer"></span>
+    <select id="filter-school" aria-label="School">
+      <option value="">All schools</option>
+    </select>
+    <select id="filter-grade" aria-label="Grade">
+      <option value="">All grades</option>
+    </select>
+    <input type="search" id="filter-name" placeholder="Find a learner" aria-label="Find a learner">
+    <button type="button" class="btn" id="open-holidays">Holidays and closures</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+</header>
+
+<main class="register-wrap" id="wrap">
+  <table id="register" aria-label="Attendance register"></table>
+</main>
+
+<footer class="foot">
+  <span class="key"><span class="sw on"></span>Present</span>
+  <span class="key"><span class="sw"></span>Absent</span>
+  <span class="key"><span class="sw closed"></span>No session</span>
+  <span class="key"><span class="sw future"></span>Not yet happened</span>
+  <span class="key"><span class="sw today"></span>Today</span>
+  <span class="key hint">Select a date to mark the whole day</span>
+  <span class="spacer"></span>
+  <span class="note">Ticks are kept in this browser only.</span>
+  <button type="button" class="link-btn" id="reset">Reset sample data</button>
+</footer>
+
+<section class="help" aria-labelledby="help-title">
+  <div class="help-inner">
+    <h2 id="help-title">How this page works</h2>
+    <p class="lede">The attendance register records which learners came to each programme session. It follows the same layout as the Inkululeko attendance spreadsheet: one row per learner, each month split into weeks, and a box for every school day from Monday to Friday.</p>
+
+    <h3>Reading the register</h3>
+    <ul>
+      <li><strong>Each row is one learner.</strong> The left side shows their ID, name, grade and school. These columns stay in place while you scroll sideways through the dates.</li>
+      <li><strong>Each month is split into weeks.</strong> Weeks follow the real calendar, so a month can have four or five weeks, and the first or last week of a month may only have a few days. Grey boxes belong to the neighbouring month.</li>
+      <li><strong>The column after Friday shows that week’s percentage</strong> for each learner.</li>
+      <li><strong>Today’s column is highlighted.</strong> Days that haven’t happened yet are faded and can’t be ticked.</li>
+      <li><strong>Hatched columns are days with no session</strong>, such as school holidays and public holidays. Hover over or select the date to see why.</li>
+    </ul>
+
+    <h3>Taking attendance</h3>
+    <p>Tick a learner’s box on a day they were present. Leave it empty if they were absent. There is no separate “absent” mark: once a session day has passed, an empty box counts as absent. Each tick is saved straight away and the totals update immediately.</p>
+    <p>To mark a whole day at once, select the date at the top of its column and choose <strong>Mark all shown as present</strong> or <strong>Mark all shown as absent</strong>. This only changes the learners currently shown, so you can filter to one school or grade first and mark just that group. You can then untick the few learners who were missing.</p>
+
+    <h3>How the numbers are worked out</h3>
+    <ul>
+      <li><strong>Total days</strong> is the number of sessions held so far this year: every weekday up to and including today, not counting days with no session.</li>
+      <li><strong>Present days</strong> is the number of those sessions the learner was ticked as present.</li>
+      <li><strong>Attendance</strong> is present days divided by total days.</li>
+      <li><strong>The weekly percentage</strong> is the days present that week divided by the sessions held that week. A week with a holiday is only measured against the days that actually had a session. A dash means no sessions were held that week, or the week hasn’t started yet.</li>
+      <li><strong>Colours</strong> make it easier to spot learners who need support: green is 80% or more, amber is 60% to 79%, and red is below 60%.</li>
+    </ul>
+    <p>The summary line above the register covers the learners currently shown. <strong>Average attendance</strong> is the combined present days of those learners divided by their combined total days, and <strong>Below 60%</strong> counts how many of them are under that threshold.</p>
+
+    <h3>Holidays and closures</h3>
+    <p>Days with no session don’t count towards anyone’s total, so learners aren’t marked down for holidays. The register starts with the 2026 public school holidays from the Department of Basic Education calendar, South African public holidays that fall on a weekday, and January and December closed for the programme.</p>
+    <ul>
+      <li><strong>To close a single day</strong>, select its date and choose <strong>Mark as no session</strong>. You can do this in advance for days that haven’t happened yet.</li>
+      <li><strong>To reopen a single day</strong>, select its date and choose <strong>Hold a session on this day</strong>.</li>
+      <li><strong>To manage whole periods</strong>, use <strong>Holidays and closures</strong> at the top of the page. It lists every closure with its dates, lets you remove any of them, and lets you add a new one with a name and a date range.</li>
+    </ul>
+    <p>Closing a day clears any ticks already on it. Reopening a day that has already passed means it counts again, so every learner will show as absent for that day until they are ticked.</p>
+
+    <h3>Views and filters</h3>
+    <ul>
+      <li><strong>Month</strong> shows one month at a time. Use the arrows to move between months. This view is easiest on a phone.</li>
+      <li><strong>Full year</strong> shows all twelve months side by side, like the spreadsheet, with an orange divider between months. It opens at the current month.</li>
+      <li><strong>School, grade and name filters</strong> narrow the list of learners. You can search by name or by learner ID.</li>
+    </ul>
+
+    <h3>About this prototype</h3>
+    <p>This is a demonstration of how attendance will work on the Inkululeko site. The learners are sample records, not real learners, and their attendance before today has been filled in at random. Any changes you make are kept in this browser only and aren’t shared with anyone else. Use <strong>Reset sample data</strong> at the bottom of the register to start again.</p>
+    <p>In the full version, attendance will be saved to the Inkululeko database, so everyone with access sees the same register, and only administrators and classroom assistants will be able to take attendance or change holidays and closures.</p>
+  </div>
+</section>
+
+<div class="menu" id="day-menu" role="menu" hidden></div>
+
+<dialog id="holidays" aria-labelledby="hol-title">
+  <form method="dialog" class="dlg-head">
+    <h2 id="hol-title">Holidays and closures</h2>
+    <button class="icon-btn" value="close" aria-label="Close">
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </form>
+  <p class="dlg-intro">Days listed here don’t count towards anyone’s attendance. Weekends are never counted.</p>
+  <ul class="hol-list" id="hol-list"></ul>
+  <form class="hol-form" id="hol-form" novalidate>
+    <h3>Add a closure</h3>
+    <label>Name
+      <input type="text" id="hol-name" placeholder="For example, Exam week" maxlength="60">
+    </label>
+    <div class="row">
+      <label>From
+        <input type="date" id="hol-from" min="2026-01-01" max="2026-12-31">
+      </label>
+      <label>To (leave blank for one day)
+        <input type="date" id="hol-to" min="2026-01-01" max="2026-12-31">
+      </label>
+    </div>
+    <p class="err" id="hol-error" role="alert"></p>
+    <button type="submit" class="btn primary">Add closure</button>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+
+  var YEAR = 2026;
+  var STORE_KEY = "inkululeko-attendance-prototype-v3";
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var DOW = ["Mon","Tue","Wed","Thu","Fri"];
+
+  var LEARNERS = [
+    { id: "Inku2501", name: "Sample Learner 01", grade: "8",  school: "Ntsika Secondary" },
+    { id: "Inku2502", name: "Sample Learner 02", grade: "8",  school: "Ntsika Secondary" },
+    { id: "Inku2503", name: "Sample Learner 03", grade: "9",  school: "Ntsika Secondary" },
+    { id: "Inku2504", name: "Sample Learner 04", grade: "9",  school: "Ntsika Secondary" },
+    { id: "Inku2505", name: "Sample Learner 05", grade: "10", school: "Ntsika Secondary" },
+    { id: "Inku2506", name: "Sample Learner 06", grade: "11", school: "Ntsika Secondary" },
+    { id: "Inku2507", name: "Sample Learner 07", grade: "8",  school: "Andrew Moyakhe" },
+    { id: "Inku2508", name: "Sample Learner 08", grade: "9",  school: "Andrew Moyakhe" },
+    { id: "Inku2509", name: "Sample Learner 09", grade: "10", school: "Andrew Moyakhe" },
+    { id: "Inku2510", name: "Sample Learner 10", grade: "10", school: "Andrew Moyakhe" },
+    { id: "Inku2511", name: "Sample Learner 11", grade: "11", school: "Andrew Moyakhe" },
+    { id: "Inku2512", name: "Sample Learner 12", grade: "12", school: "Andrew Moyakhe" },
+    { id: "Inku2513", name: "Sample Learner 13", grade: "8",  school: "Nathaniel Nyaluza High" },
+    { id: "Inku2514", name: "Sample Learner 14", grade: "9",  school: "Nathaniel Nyaluza High" },
+    { id: "Inku2515", name: "Sample Learner 15", grade: "10", school: "Nathaniel Nyaluza High" },
+    { id: "Inku2516", name: "Sample Learner 16", grade: "11", school: "Nathaniel Nyaluza High" },
+    { id: "Inku2517", name: "Sample Learner 17", grade: "12", school: "Nathaniel Nyaluza High" },
+    { id: "Inku2518", name: "Sample Learner 18", grade: "12", school: "Nathaniel Nyaluza High" }
+  ];
+
+  var PUBLIC_HOLIDAYS = {
+    "2026-04-03": "Good Friday",
+    "2026-04-06": "Family Day",
+    "2026-04-27": "Freedom Day",
+    "2026-05-01": "Workers’ Day",
+    "2026-06-16": "Youth Day",
+    "2026-08-10": "National Women’s Day (observed)",
+    "2026-09-24": "Heritage Day",
+    "2026-12-16": "Day of Reconciliation",
+    "2026-12-25": "Christmas Day"
+  };
+
+  // DBE 2026 public school calendar holidays (same dates for all provinces)
+  var SCHOOL_HOLIDAYS = [
+    ["2026-03-28", "2026-04-07", "School holidays after term 1"],
+    ["2026-06-15", "2026-06-15", "Special school holiday"],
+    ["2026-06-27", "2026-07-20", "School holidays after term 2"],
+    ["2026-09-24", "2026-10-05", "School holidays after term 3"]
+  ];
+
+  /* ---------- Dates ---------- */
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+  var now = new Date();
+  var TODAY = now.getFullYear() === YEAR ? iso(now) : (now.getFullYear() > YEAR ? "9999-12-31" : "0000-00-00");
+
+  // Calendar: months -> weeks (Mon to Fri) -> days. Days outside the month are null.
+  var CAL = [];
+  for (var m = 0; m < 12; m++) {
+    var first = new Date(YEAR, m, 1);
+    var d = new Date(first);
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+    var mon = new Date(d);
+    mon.setDate(d.getDate() - (d.getDay() - 1));
+    var weeks = [];
+    while (true) {
+      var days = [];
+      var any = false;
+      for (var i = 0; i < 5; i++) {
+        var x = new Date(mon);
+        x.setDate(mon.getDate() + i);
+        if (x.getMonth() === m && x.getFullYear() === YEAR) {
+          days.push({ iso: iso(x), day: x.getDate(), dow: i });
+          any = true;
+        } else {
+          days.push({ iso: null, day: x.getDate(), dow: i });
+        }
+      }
+      if (!any) break;
+      weeks.push(days);
+      mon.setDate(mon.getDate() + 7);
+    }
+    CAL.push(weeks);
+  }
+
+  var ALL_DAYS = [];
+  CAL.forEach(function (weeks) {
+    weeks.forEach(function (days) {
+      days.forEach(function (dd) { if (dd.iso) ALL_DAYS.push(dd.iso); });
+    });
+  });
+
+  /* ---------- State ---------- */
+  var present = new Set();
+  var closed = {};
+
+  function seededRandom(seed) {
+    var s = seed >>> 0;
+    return function () {
+      s = (s + 0x6D2B79F5) >>> 0;
+      var t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function sampleState() {
+    present = new Set();
+    closed = {};
+    ALL_DAYS.forEach(function (day) {
+      var month = Number(day.slice(5, 7));
+      if (month === 1 || month === 12) closed[day] = "Programme closed";
+      SCHOOL_HOLIDAYS.forEach(function (r) {
+        if (day >= r[0] && day <= r[1]) closed[day] = r[2];
+      });
+    });
+    Object.keys(PUBLIC_HOLIDAYS).forEach(function (day) {
+      if (!closed[day]) closed[day] = "Public holiday: " + PUBLIC_HOLIDAYS[day];
+    });
+    LEARNERS.forEach(function (l, idx) {
+      var rand = seededRandom(1000 + idx * 97);
+      var rate = 0.55 + rand() * 0.42;
+      ALL_DAYS.forEach(function (day) {
+        if (day <= TODAY && !closed[day] && day < TODAY && rand() < rate) present.add(l.id + "|" + day);
+      });
+    });
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        var data = JSON.parse(raw);
+        present = new Set(data.present || []);
+        closed = data.closed || {};
+        return;
+      }
+    } catch (e) { /* fall through to sample data */ }
+    sampleState();
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ present: Array.from(present), closed: closed }));
+    } catch (e) { /* storage unavailable; changes last for this visit only */ }
+  }
+
+  /* ---------- UI state ---------- */
+  var view = "month";
+  var currentMonth = TODAY.slice(0, 4) === String(YEAR) ? Number(TODAY.slice(5, 7)) - 1 : 10;
+  var filters = { school: "", grade: "", name: "" };
+
+  var els = {
+    table: document.getElementById("register"),
+    wrap: document.getElementById("wrap"),
+    stats: document.getElementById("stats"),
+    monthLabel: document.getElementById("month-label"),
+    monthNav: document.getElementById("month-nav"),
+    prev: document.getElementById("prev-month"),
+    next: document.getElementById("next-month"),
+    viewMonth: document.getElementById("view-month"),
+    viewYear: document.getElementById("view-year"),
+    school: document.getElementById("filter-school"),
+    grade: document.getElementById("filter-grade"),
+    name: document.getElementById("filter-name"),
+    menu: document.getElementById("day-menu"),
+    reset: document.getElementById("reset")
+  };
+
+  /* ---------- Calculations ---------- */
+  function isHeld(day) { return day && day <= TODAY && !closed[day]; }
+
+  function learnerTotals(id) {
+    var total = 0, pres = 0;
+    for (var i = 0; i < ALL_DAYS.length; i++) {
+      var day = ALL_DAYS[i];
+      if (isHeld(day)) {
+        total++;
+        if (present.has(id + "|" + day)) pres++;
+      }
+    }
+    return { total: total, present: pres, pct: total ? pres / total : null };
+  }
+
+  function weekPct(id, days) {
+    var held = 0, pres = 0;
+    days.forEach(function (dd) {
+      if (isHeld(dd.iso)) {
+        held++;
+        if (present.has(id + "|" + dd.iso)) pres++;
+      }
+    });
+    return held ? pres / held : null;
+  }
+
+  function chip(p) {
+    if (p === null) return '<span class="pct none" title="No sessions held">–</span>';
+    var r = Math.round(p * 100);
+    var cls = r >= 80 ? "good" : (r >= 60 ? "warn" : "bad");
+    return '<span class="pct ' + cls + '">' + r + "%</span>";
+  }
+
+  function visibleLearners() {
+    var q = filters.name.trim().toLowerCase();
+    return LEARNERS.filter(function (l) {
+      if (filters.school && l.school !== filters.school) return false;
+      if (filters.grade && l.grade !== filters.grade) return false;
+      if (q && l.name.toLowerCase().indexOf(q) === -1 && l.id.toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* ---------- Rendering ---------- */
+  function monthsInView() {
+    if (view === "year") return CAL.map(function (_, i) { return i; });
+    return [currentMonth];
+  }
+
+  function weekRange(days) {
+    var real = days.filter(function (dd) { return dd.iso; });
+    var a = real[0].day, b = real[real.length - 1].day;
+    return a === b ? String(a) : a + "–" + b;
+  }
+
+  function render() {
+    var months = monthsInView();
+    var rows = visibleLearners();
+    var h = [];
+
+    // Header row 1: summary columns and month names
+    h.push("<thead><tr class='r1'>");
+    h.push("<th class='sum s1' rowspan='3' scope='col'>ID</th>");
+    h.push("<th class='sum s2' rowspan='3' scope='col'>Learner</th>");
+    h.push("<th class='sum num s3' rowspan='3' scope='col' title='School days held so far this year'>Total days</th>");
+    h.push("<th class='sum num s4' rowspan='3' scope='col'>Present days</th>");
+    h.push("<th class='sum num s5' rowspan='3' scope='col'>Attendance</th>");
+    months.forEach(function (m, idx) {
+      h.push("<th class='month' data-month='" + m + "' colspan='" + (CAL[m].length * 6) + "' scope='colgroup'><span>" + MONTHS[m] + "</span></th>");
+      if (idx < months.length - 1) h.push("<th class='gap' rowspan='3' aria-hidden='true'></th>");
+    });
+    h.push("</tr>");
+
+    // Header row 2: weeks
+    h.push("<tr class='r2'>");
+    months.forEach(function (m) {
+      CAL[m].forEach(function (days, w) {
+        h.push("<th class='week' colspan='6' scope='colgroup'>Week " + (w + 1) + "<span>" + weekRange(days) + " " + SHORT[m] + "</span></th>");
+      });
+    });
+    h.push("</tr>");
+
+    // Header row 3: days
+    h.push("<tr class='r3'>");
+    months.forEach(function (m) {
+      CAL[m].forEach(function (days) {
+        days.forEach(function (dd) {
+          if (!dd.iso) {
+            h.push("<th class='day outside' aria-hidden='true'></th>");
+            return;
+          }
+          var cls = "day";
+          if (closed[dd.iso]) cls += " closed";
+          if (dd.iso > TODAY) cls += " future";
+          if (dd.iso === TODAY) cls += " today";
+          var tip = closed[dd.iso] ? closed[dd.iso] : (dd.iso > TODAY ? "Not yet happened" : "Mark the whole day");
+          h.push("<th class='" + cls + "' scope='col'><button type='button' data-day='" + dd.iso + "' title='" + esc(tip) + "'>" + DOW[dd.dow] + "<b>" + dd.day + "</b></button></th>");
+        });
+        h.push("<th class='wkpct' scope='col' title='Days present out of sessions held that week'>%</th>");
+      });
+    });
+    h.push("</tr></thead>");
+
+    // Body
+    h.push("<tbody>");
+    if (!rows.length) {
+      var span = 5 + months.reduce(function (s, m) { return s + CAL[m].length * 6; }, 0) + months.length - 1;
+      h.push("<tr><td colspan='" + span + "' class='empty'>No learners match these filters. Clear the search or choose another school or grade.</td></tr>");
+    }
+    rows.forEach(function (l) {
+      var t = learnerTotals(l.id);
+      h.push("<tr data-id='" + l.id + "'>");
+      h.push("<td class='s1'>" + l.id + "</td>");
+      h.push("<td class='s2'>" + esc(l.name) + "<small>Grade " + l.grade + ", " + esc(l.school) + "</small></td>");
+      h.push("<td class='s3' data-sum='total'>" + t.total + "</td>");
+      h.push("<td class='s4' data-sum='present'>" + t.present + "</td>");
+      h.push("<td class='s5' data-sum='pct'>" + chip(t.pct) + "</td>");
+      months.forEach(function (m, idx) {
+        CAL[m].forEach(function (days, w) {
+          days.forEach(function (dd) {
+            if (!dd.iso) { h.push("<td class='outside'></td>"); return; }
+            var cls = "cell";
+            var disabled = false;
+            if (closed[dd.iso]) { cls += " closed"; disabled = true; }
+            else if (dd.iso > TODAY) { disabled = true; }
+            if (dd.iso === TODAY) cls += " today";
+            var checked = present.has(l.id + "|" + dd.iso);
+            if (closed[dd.iso]) { h.push("<td class='" + cls + "'></td>"); return; }
+            h.push("<td class='" + cls + "'><input type='checkbox' data-day='" + dd.iso + "' data-week='" + m + "-" + w + "'" +
+              (checked ? " checked" : "") + (disabled ? " disabled" : "") +
+              " aria-label='" + esc(l.name) + ", " + DOW[dd.dow] + " " + dd.day + " " + MONTHS[m] + "'></td>");
+          });
+          h.push("<td class='wkpct' data-wk='" + m + "-" + w + "'>" + chip(weekPct(l.id, days)) + "</td>");
+        });
+        if (idx < months.length - 1) h.push("<td class='gap' aria-hidden='true'></td>");
+      });
+      h.push("</tr>");
+    });
+    h.push("</tbody>");
+
+    els.table.innerHTML = h.join("");
+    renderStats(rows);
+    els.monthLabel.textContent = MONTHS[currentMonth];
+    els.prev.disabled = currentMonth === 0;
+    els.next.disabled = currentMonth === 11;
+  }
+
+  function renderStats(rows) {
+    var heldSoFar = ALL_DAYS.filter(isHeld).length;
+    var tot = 0, pres = 0;
+    rows.forEach(function (l) {
+      var t = learnerTotals(l.id);
+      tot += t.total; pres += t.present;
+    });
+    var avg = tot ? Math.round((pres / tot) * 100) + "%" : "–";
+    var below = rows.filter(function (l) { var p = learnerTotals(l.id).pct; return p !== null && Math.round(p * 100) < 60; }).length;
+    els.stats.innerHTML =
+      "<span>Learners shown <strong>" + rows.length + " of " + LEARNERS.length + "</strong></span>" +
+      "<span>Sessions held so far this year <strong>" + heldSoFar + "</strong></span>" +
+      "<span>Average attendance <strong>" + avg + "</strong></span>" +
+      "<span>Below 60% <strong>" + below + "</strong></span>";
+  }
+
+  function refreshRow(tr) {
+    var id = tr.getAttribute("data-id");
+    var t = learnerTotals(id);
+    tr.querySelector("[data-sum='total']").textContent = t.total;
+    tr.querySelector("[data-sum='present']").textContent = t.present;
+    tr.querySelector("[data-sum='pct']").innerHTML = chip(t.pct);
+  }
+
+  /* ---------- Events ---------- */
+  els.table.addEventListener("change", function (e) {
+    var box = e.target;
+    if (!box.matches("input[type='checkbox']")) return;
+    var tr = box.closest("tr");
+    var id = tr.getAttribute("data-id");
+    var key = id + "|" + box.getAttribute("data-day");
+    if (box.checked) present.add(key); else present.delete(key);
+    save();
+    var wk = box.getAttribute("data-week").split("-");
+    var cell = tr.querySelector("[data-wk='" + wk[0] + "-" + wk[1] + "']");
+    cell.innerHTML = chip(weekPct(id, CAL[Number(wk[0])][Number(wk[1])]));
+    refreshRow(tr);
+    renderStats(visibleLearners());
+  });
+
+  // Day menu
+  var menuDay = null;
+  var menuOpenedAt = 0;
+  function closeMenu() { els.menu.hidden = true; menuDay = null; }
+
+  function prettyDate(day) {
+    var m = Number(day.slice(5, 7)) - 1;
+    var dt = new Date(YEAR, m, Number(day.slice(8, 10)));
+    var dow = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][dt.getDay()];
+    return dow + " " + dt.getDate() + " " + MONTHS[m];
+  }
+
+  function openMenu(btn) {
+    var day = btn.getAttribute("data-day");
+    menuDay = day;
+    menuOpenedAt = Date.now();
+    var n = visibleLearners().length;
+    var parts = ["<h2>" + prettyDate(day) + "</h2>"];
+    if (closed[day]) {
+      parts.push("<p>" + esc(closed[day]) + ". This day doesn’t count towards anyone’s total.</p>");
+      parts.push("<button type='button' role='menuitem' data-act='reopen'>Hold a session on this day</button>");
+    } else if (day > TODAY) {
+      parts.push("<p>This day hasn’t happened yet. You can mark it as a day with no session in advance.</p>");
+      parts.push("<button type='button' role='menuitem' data-act='close'>Mark as no session</button>");
+    } else {
+      parts.push("<p>Applies to the " + n + " learner" + (n === 1 ? "" : "s") + " shown.</p>");
+      parts.push("<button type='button' role='menuitem' data-act='all'>Mark all shown as present</button>");
+      parts.push("<button type='button' role='menuitem' data-act='none'>Mark all shown as absent</button>");
+      parts.push("<button type='button' role='menuitem' class='danger' data-act='close'>Mark as no session</button>");
+    }
+    els.menu.innerHTML = parts.join("");
+    els.menu.hidden = false;
+    var r = btn.getBoundingClientRect();
+    var mw = els.menu.offsetWidth, mh = els.menu.offsetHeight;
+    var left = Math.min(Math.max(8, r.left + r.width / 2 - mw / 2), window.innerWidth - mw - 8);
+    var top = r.bottom + 6;
+    if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+    els.menu.style.left = left + "px";
+    els.menu.style.top = top + "px";
+    var firstBtn = els.menu.querySelector("button");
+    if (firstBtn) firstBtn.focus();
+  }
+
+  els.table.addEventListener("click", function (e) {
+    var btn = e.target.closest("th.day button");
+    if (!btn) return;
+    e.stopPropagation();
+    if (menuDay === btn.getAttribute("data-day") && !els.menu.hidden) { closeMenu(); return; }
+    openMenu(btn);
+  });
+
+  els.menu.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-act]");
+    if (!b || !menuDay) return;
+    var act = b.getAttribute("data-act");
+    var day = menuDay;
+    if (act === "all") visibleLearners().forEach(function (l) { present.add(l.id + "|" + day); });
+    if (act === "none") visibleLearners().forEach(function (l) { present.delete(l.id + "|" + day); });
+    if (act === "close") {
+      closed[day] = "No session";
+      LEARNERS.forEach(function (l) { present.delete(l.id + "|" + day); });
+    }
+    if (act === "reopen") delete closed[day];
+    save();
+    closeMenu();
+    var x = els.wrap.scrollLeft, y = els.wrap.scrollTop;
+    render();
+    els.wrap.scrollLeft = x; els.wrap.scrollTop = y;
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!els.menu.hidden && !els.menu.contains(e.target)) closeMenu();
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+  els.wrap.addEventListener("scroll", function () { if (Date.now() - menuOpenedAt > 300) closeMenu(); });
+  window.addEventListener("resize", closeMenu);
+  window.addEventListener("scroll", function () { if (Date.now() - menuOpenedAt > 300) closeMenu(); }, { passive: true });
+
+  // View and navigation
+  function setView(v) {
+    view = v;
+    els.viewMonth.setAttribute("aria-pressed", String(v === "month"));
+    els.viewYear.setAttribute("aria-pressed", String(v === "year"));
+    els.monthNav.style.visibility = v === "month" ? "visible" : "hidden";
+    render();
+    if (v === "year") scrollToMonth(currentMonth); else els.wrap.scrollLeft = 0;
+  }
+
+  function scrollToMonth(m) {
+    var th = els.table.querySelector("th.month[data-month='" + m + "']");
+    if (!th) return;
+    els.wrap.scrollLeft = 0;
+    var edge = parseFloat(getComputedStyle(els.wrap).getPropertyValue("--sticky-w")) || 0;
+    var delta = th.getBoundingClientRect().left - els.wrap.getBoundingClientRect().left - edge;
+    els.wrap.scrollLeft = Math.max(0, delta);
+  }
+
+  els.viewMonth.addEventListener("click", function () { setView("month"); });
+  els.viewYear.addEventListener("click", function () { setView("year"); });
+  els.prev.addEventListener("click", function () { if (currentMonth > 0) { currentMonth--; render(); } });
+  els.next.addEventListener("click", function () { if (currentMonth < 11) { currentMonth++; render(); } });
+
+  // Filters
+  Array.from(new Set(LEARNERS.map(function (l) { return l.school; }))).forEach(function (s) {
+    els.school.insertAdjacentHTML("beforeend", "<option>" + esc(s) + "</option>");
+  });
+  Array.from(new Set(LEARNERS.map(function (l) { return l.grade; })))
+    .sort(function (a, b) { return Number(a) - Number(b); })
+    .forEach(function (g) { els.grade.insertAdjacentHTML("beforeend", "<option value='" + g + "'>Grade " + g + "</option>"); });
+
+  els.school.addEventListener("change", function () { filters.school = els.school.value; render(); });
+  els.grade.addEventListener("change", function () { filters.grade = els.grade.value; render(); });
+  els.name.addEventListener("input", function () { filters.name = els.name.value; render(); });
+
+  els.reset.addEventListener("click", function () {
+    if (!confirm("Reset the register to the original sample data? Your ticks in this browser will be lost.")) return;
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
+    sampleState();
+    render();
+  });
+
+  /* ---------- Holidays and closures ---------- */
+  var hol = {
+    dialog: document.getElementById("holidays"),
+    list: document.getElementById("hol-list"),
+    form: document.getElementById("hol-form"),
+    name: document.getElementById("hol-name"),
+    from: document.getElementById("hol-from"),
+    to: document.getElementById("hol-to"),
+    error: document.getElementById("hol-error")
+  };
+
+  function shortDate(day) {
+    return Number(day.slice(8, 10)) + " " + SHORT[Number(day.slice(5, 7)) - 1];
+  }
+
+  // Group consecutive closed school days that share a name
+  function closureRanges() {
+    var out = [];
+    var cur = null;
+    for (var i = 0; i < ALL_DAYS.length; i++) {
+      var day = ALL_DAYS[i];
+      var label = closed[day];
+      if (label && cur && cur.label === label && cur.lastIndex === i - 1) {
+        cur.to = day; cur.lastIndex = i; cur.count++;
+      } else if (label) {
+        cur = { label: label, from: day, to: day, lastIndex: i, count: 1 };
+        out.push(cur);
+      } else {
+        cur = null;
+      }
+    }
+    return out;
+  }
+
+  function renderHolidays() {
+    var ranges = closureRanges();
+    if (!ranges.length) {
+      hol.list.innerHTML = "<li class='none'>No closures yet. Add one below.</li>";
+      return;
+    }
+    hol.list.innerHTML = ranges.map(function (r) {
+      var when = r.from === r.to ? shortDate(r.from) : shortDate(r.from) + " to " + shortDate(r.to);
+      return "<li><div><strong>" + esc(r.label) + "</strong><span>" + when + ", " + r.count +
+        " school day" + (r.count === 1 ? "" : "s") + "</span></div>" +
+        "<button type='button' class='link-btn danger' data-from='" + r.from + "' data-to='" + r.to +
+        "' data-label='" + esc(r.label) + "'>Remove</button></li>";
+    }).join("");
+  }
+
+  function afterClosureChange() {
+    save();
+    var x = els.wrap.scrollLeft, y = els.wrap.scrollTop;
+    render();
+    els.wrap.scrollLeft = x; els.wrap.scrollTop = y;
+    renderHolidays();
+  }
+
+  document.getElementById("open-holidays").addEventListener("click", function () {
+    hol.error.textContent = "";
+    renderHolidays();
+    hol.dialog.showModal();
+  });
+
+  hol.list.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-from]");
+    if (!b) return;
+    var from = b.getAttribute("data-from"), to = b.getAttribute("data-to");
+    if (!confirm("Remove \u201c" + b.getAttribute("data-label") + "\u201d? Those days will count towards attendance again.")) return;
+    ALL_DAYS.forEach(function (day) { if (day >= from && day <= to) delete closed[day]; });
+    afterClosureChange();
+  });
+
+  hol.from.addEventListener("change", function () { hol.to.min = hol.from.value || "2026-01-01"; });
+
+  hol.form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = hol.name.value.trim() || "No session";
+    var from = hol.from.value;
+    var to = hol.to.value || from;
+    if (!from) { hol.error.textContent = "Choose a start date."; return; }
+    if (to < from) { hol.error.textContent = "The end date is before the start date."; return; }
+    var days = ALL_DAYS.filter(function (day) { return day >= from && day <= to; });
+    if (!days.length) { hol.error.textContent = "Those dates are all weekends, so there\u2019s nothing to close."; return; }
+    days.forEach(function (day) {
+      closed[day] = name;
+      LEARNERS.forEach(function (l) { present.delete(l.id + "|" + day); });
+    });
+    hol.error.textContent = "";
+    hol.form.reset();
+    hol.to.min = "2026-01-01";
+    afterClosureChange();
+  });
+
+  load();
+  setView("month");
+})();
+</script>
+</body>
+</html>
