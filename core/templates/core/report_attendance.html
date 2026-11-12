@@ -5,7 +5,7 @@
 <div class="flex items-center justify-between mb-8">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Attendance Report</h1>
-        <p class="text-gray-500 text-sm mt-1">Filter and view attendance records</p>
+        <p class="text-gray-500 text-sm mt-1">Attendance for each learner over a date range, from the daily register</p>
     </div>
     <div class="flex items-center gap-3">
         <a href="{% url 'reports' %}"
@@ -28,11 +28,20 @@
 <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6 print:hidden">
     <form method="get" class="flex flex-wrap items-end gap-4">
         <div class="flex-1 min-w-[180px]">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Class</label>
-            <select name="subject" class="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">All Classes</option>
-                {% for s in subjects %}
-                <option value="{{ s.id }}" {% if selected_subject == s.id|stringformat:"d" %}selected{% endif %}>{{ s.name }}</option>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">School</label>
+            <select name="school" class="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">All schools</option>
+                {% for sc in schools %}
+                <option value="{{ sc.id }}" {% if selected_school == sc.id|stringformat:"d" %}selected{% endif %}>{{ sc.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="min-w-[140px]">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Grade</label>
+            <select name="grade" class="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">All grades</option>
+                {% for g in grades %}
+                <option value="{{ g }}" {% if selected_grade == g %}selected{% endif %}>{{ g }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -48,22 +57,23 @@
     </form>
 </div>
 
-<div class="grid grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Total Records</p>
-        <p class="text-3xl font-bold text-gray-900 mt-1">{{ total }}</p>
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Average Attendance</p>
+        <p class="text-3xl font-bold text-gray-900 mt-1">{{ average }}%</p>
+        <p class="text-xs text-gray-400 mt-1">{{ learner_count }} learner{{ learner_count|pluralize }}</p>
     </div>
     <div class="bg-emerald-50 rounded-xl border border-emerald-200 p-5">
-        <p class="text-xs font-medium text-emerald-600 uppercase tracking-wide">Present</p>
+        <p class="text-xs font-medium text-emerald-600 uppercase tracking-wide">Days Present</p>
         <p class="text-3xl font-bold text-emerald-700 mt-1">{{ present }}</p>
     </div>
     <div class="bg-red-50 rounded-xl border border-red-200 p-5">
-        <p class="text-xs font-medium text-red-600 uppercase tracking-wide">Absent</p>
+        <p class="text-xs font-medium text-red-600 uppercase tracking-wide">Days Absent</p>
         <p class="text-3xl font-bold text-red-700 mt-1">{{ absent }}</p>
     </div>
     <div class="bg-amber-50 rounded-xl border border-amber-200 p-5">
-        <p class="text-xs font-medium text-amber-600 uppercase tracking-wide">Late</p>
-        <p class="text-3xl font-bold text-amber-700 mt-1">{{ late }}</p>
+        <p class="text-xs font-medium text-amber-600 uppercase tracking-wide">Below 60%</p>
+        <p class="text-3xl font-bold text-amber-700 mt-1">{{ below_60 }}</p>
     </div>
 </div>
 
@@ -72,27 +82,39 @@
         <thead>
             <tr class="border-b border-gray-100 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">
                 <th class="px-6 py-3">Learner</th>
-                <th class="px-6 py-3">Class</th>
-                <th class="px-6 py-3">Date</th>
-                <th class="px-6 py-3">Status</th>
-                <th class="px-6 py-3">Marked By</th>
+                <th class="px-6 py-3">School</th>
+                <th class="px-6 py-3">Grade</th>
+                <th class="px-6 py-3 text-right">Session Days</th>
+                <th class="px-6 py-3 text-right">Present</th>
+                <th class="px-6 py-3 text-right">Absent</th>
+                <th class="px-6 py-3 text-right">Attendance</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
-            {% for r in records %}
+            {% for r in rows %}
             <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-6 py-3 font-medium text-gray-900">{{ r.learner.get_full_name }}</td>
-                <td class="px-6 py-3 text-gray-600">{{ r.subject.name }}</td>
-                <td class="px-6 py-3 text-gray-600">{{ r.date }}</td>
-                <td class="px-6 py-3">
-                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium {% if r.status == 'present' %}bg-emerald-50 text-emerald-700{% elif r.status == 'late' %}bg-amber-50 text-amber-700{% else %}bg-red-50 text-red-700{% endif %}">{{ r.get_status_display }}</span>
+                <td class="px-6 py-3 font-medium text-gray-900">
+                    <a href="{% url 'learner_progress' r.learner.id %}" class="hover:text-brand-600">{{ r.learner.get_full_name|default:r.learner.username }}</a>
                 </td>
-                <td class="px-6 py-3 text-gray-600">{{ r.marked_by.get_full_name|default:"—" }}</td>
+                <td class="px-6 py-3 text-gray-600">{{ r.learner.school.name|default:"—" }}</td>
+                <td class="px-6 py-3 text-gray-600">{{ r.learner.grade_level|default:"—" }}</td>
+                <td class="px-6 py-3 text-right text-gray-600">{{ r.total }}</td>
+                <td class="px-6 py-3 text-right text-gray-600">{{ r.present }}</td>
+                <td class="px-6 py-3 text-right text-gray-600">{{ r.absent }}</td>
+                <td class="px-6 py-3 text-right">
+                    {% if r.total %}
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium {% if r.rate >= 79.5 %}bg-emerald-50 text-emerald-700{% elif r.rate >= 59.5 %}bg-amber-50 text-amber-700{% else %}bg-red-50 text-red-700{% endif %}">{{ r.rate|floatformat:0 }}%</span>
+                    {% else %}
+                    <span class="text-gray-400">—</span>
+                    {% endif %}
+                </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="px-6 py-12 text-center text-gray-400">No attendance records found.</td></tr>
+            <tr><td colspan="7" class="px-6 py-12 text-center text-gray-400">No learners match these filters.</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+<p class="text-xs text-gray-400 mt-4 print:hidden">Session days are weekdays in the date range that weren&rsquo;t marked as having no session, counted from each learner&rsquo;s start date. Learners with the lowest attendance are listed first. The register explains these rules in full under &ldquo;How this page works&rdquo;.</p>
 {% endblock %}

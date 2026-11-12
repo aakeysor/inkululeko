@@ -357,9 +357,7 @@ function buildAttendance(d) {
     d.recent_attendance.forEach(r => {
         const cls = r.status === 'present'
             ? 'bg-emerald-50 text-emerald-700'
-            : r.status === 'late'
-                ? 'bg-amber-50 text-amber-700'
-                : 'bg-red-50 text-red-700';
+            : 'bg-red-50 text-red-700';
         const label = r.status.charAt(0).toUpperCase() + r.status.slice(1);
         rows += `
             <tr>

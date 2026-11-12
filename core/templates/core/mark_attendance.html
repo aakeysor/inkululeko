@@ -1,108 +1,825 @@
 {% extends 'core/base.html' %}
-{% block title %}Mark Attendance{% endblock %}
+{% block title %}Attendance Register{% endblock %}
 
 {% block content %}
-<div class="mb-8">
-    <h1 class="text-2xl font-bold text-gray-900">Mark Attendance</h1>
-    <p class="text-gray-500 text-sm mt-1">
-        Select a subject and date to begin
-    </p>
-</div>
+<style>
+  .reg {
+    --surface: #ffffff;
+    --surface-2: #f3f4f6;
+    --line: #e5e7eb;
+    --line-strong: #c3c8d1;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --faint: #9ca3af;
+    --brand: #364fc7;
+    --brand-tint: #eef2ff;
+    --good: #047857; --good-bg: #d1fae5;
+    --warn: #b45309; --warn-bg: #fef3c7;
+    --bad: #b91c1c;  --bad-bg: #fee2e2;
+    --gap: #f6b26b;
+    --hatch: #e5e7eb;
+    --today: #fff7e6;
+    --sticky-w: 502px;
+  }
+  .reg-wrap { height: clamp(420px, 70vh, 900px); overflow: auto; position: relative; background: var(--surface); }
+  .reg table { border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .reg th, .reg td {
+    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 0; text-align: center; white-space: nowrap; background: var(--surface);
+  }
+  .reg thead th {
+    position: sticky; z-index: 3; font-weight: 600; color: var(--muted);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .reg thead tr.r1 th { top: 0; height: 28px; }
+  .reg thead tr.r2 th { top: 28px; height: 34px; }
+  .reg thead tr.r3 th { top: 62px; height: 42px; }
+  .reg thead th.sum { top: 0; z-index: 6; vertical-align: bottom; padding: 0 8px 10px; text-align: left; white-space: normal; line-height: 1.25; }
+  .reg thead th.sum.num { text-align: center; }
+  .reg thead th.sum.s1, .reg thead th.sum.s2 { z-index: 7; }
+  .reg thead tr.r1 th.month { color: var(--text); font-size: 12px; text-align: left; padding: 0; }
+  .reg th.month span { position: sticky; left: calc(var(--sticky-w) + 10px); padding: 0 10px; }
+  .reg thead tr.r2 th.week { text-transform: none; letter-spacing: 0; font-size: 12px; }
+  .reg thead tr.r2 th.week span { display: block; font-weight: 400; color: var(--faint); font-size: 11px; }
+  .reg th.gap, .reg td.gap { background: var(--gap); min-width: 10px; width: 10px; border-right: 0; }
+  .reg thead th.gap { top: 0; z-index: 4; }
 
-<div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-    <form method="get" class="flex flex-wrap items-end gap-4">
-        <div class="flex-1 min-w-[200px]">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Subject
-            </label>
-            {{ form.subject }}
-        </div>
-        <div class="flex-1 min-w-[200px]">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Date
-            </label>
-            {{ form.date }}
-        </div>
-        <button type="submit"
-                class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5
-                       rounded-lg text-sm font-medium transition-colors">
-            Load Learners
-        </button>
-    </form>
-</div>
+  .reg .s1, .reg .s2, .reg .s3, .reg .s4, .reg .s5 { position: sticky; z-index: 2; }
+  .reg thead .s1, .reg thead .s2, .reg thead .s3, .reg thead .s4, .reg thead .s5 { z-index: 6; }
+  .reg .s1 { left: 0; min-width: 84px; width: 84px; max-width: 84px; }
+  .reg .s2 { left: 84px; min-width: 176px; width: 176px; max-width: 176px; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+  .reg .s3 { left: 260px; min-width: 70px; width: 70px; max-width: 70px; }
+  .reg .s4 { left: 330px; min-width: 76px; width: 76px; max-width: 76px; }
+  .reg .s5 { left: 406px; min-width: 96px; width: 96px; max-width: 96px; border-right: 2px solid var(--line-strong); }
+  .reg td.s1 { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .reg td.s2 { padding: 0 10px; font-weight: 500; }
+  .reg td.s2 small { display: block; color: var(--faint); font-weight: 400; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+  .reg td.s3, .reg td.s4 { font-variant-numeric: tabular-nums; }
+  @media (max-width: 760px) {
+    .reg { --sticky-w: 140px; }
+    .reg .s1 { display: none; }
+    .reg .s2 { left: 0; min-width: 140px; width: 140px; max-width: 140px; border-right: 2px solid var(--line-strong); }
+    .reg .s3, .reg .s4, .reg .s5 { position: static; }
+    .reg thead th.s3, .reg thead th.s4, .reg thead th.s5 { position: sticky; left: auto; }
+    .reg .s5 { border-right: 1px solid var(--line); }
+  }
+  .reg tbody tr { height: 44px; }
+  .reg tbody tr:hover td { background: var(--surface-2); }
+  .reg tbody tr:hover td.gap { background: var(--gap); }
 
-{% if learners %}
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-100">
-        <h2 class="font-semibold text-gray-900">
-            {{ selected_subject.name }}
-            <span class="font-normal text-gray-400">·</span>
-            <span class="font-normal text-gray-500">
-                {{ selected_date }}
-            </span>
-        </h2>
+  .reg th.day { min-width: 36px; width: 36px; }
+  .reg th.day button {
+    width: 100%; height: 100%; border: 0; background: transparent; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+  }
+  .reg th.day button b { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: 0; }
+  .reg th.day button:hover { background: var(--brand-tint); }
+  .reg th.day.today button { background: var(--today); }
+  .reg th.day.today button b { color: var(--brand); }
+  .reg th.day.future button b { color: var(--faint); }
+  .reg th.day.closed, .reg td.closed { background-image: repeating-linear-gradient(135deg, var(--hatch) 0 4px, transparent 4px 9px); }
+  .reg th.day.outside, .reg td.outside { background: var(--surface-2); }
+  .reg td.pre { background: #fafafa; }
+  .reg th.wkpct { min-width: 48px; width: 48px; }
+
+  .reg td.cell input {
+    appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin: 0;
+    border: 1.5px solid var(--line-strong); border-radius: 5px; background: #fff;
+    cursor: pointer; vertical-align: middle; transition: background-color .12s ease, border-color .12s ease;
+  }
+  .reg td.pre input { border-style: dashed; }
+  .reg td.cell input:checked {
+    background: var(--brand) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+    border-color: var(--brand); border-style: solid;
+  }
+  .reg td.cell input:disabled { cursor: default; opacity: .35; }
+  .reg td.cell input:focus-visible, .reg th.day button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .reg td.today { background: var(--today); }
+
+  .reg .pct { display: inline-block; min-width: 40px; padding: 2px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 12px; }
+  .reg .pct.good { background: var(--good-bg); color: var(--good); }
+  .reg .pct.warn { background: var(--warn-bg); color: var(--warn); }
+  .reg .pct.bad  { background: var(--bad-bg);  color: var(--bad); }
+  .reg .pct.none { color: var(--faint); font-weight: 400; }
+  .reg td.wkpct .pct { min-width: 34px; padding: 1px 4px; font-size: 11px; }
+
+  .reg .sw { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--line-strong); display: inline-block; }
+  .reg .sw.on { background: var(--brand); border-color: var(--brand); }
+  .reg .sw.closed { background-image: repeating-linear-gradient(135deg, var(--hatch) 0 3px, transparent 3px 6px); }
+  .reg .sw.future { opacity: .35; }
+  .reg .sw.today { background: var(--today); }
+  .reg .sw.pre { border-style: dashed; }
+
+  .reg-menu { position: fixed; z-index: 60; min-width: 230px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 8px 24px rgba(17,24,39,.14); padding: 6px; }
+  .reg-menu[hidden] { display: none; }
+  .reg-menu h2 { margin: 6px 10px 2px; font-size: 13px; font-weight: 600; color: #111827; }
+  .reg-menu p { margin: 0 10px 8px; font-size: 12px; color: #6b7280; max-width: 260px; white-space: normal; }
+  .reg-menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+  .reg-menu button:hover { background: #f3f4f6; }
+  .reg-menu button.danger { color: #b91c1c; }
+
+  dialog.reg-dialog { border: 1px solid #e5e7eb; border-radius: 12px; padding: 0; width: min(540px, calc(100vw - 32px)); max-height: calc(100% - 48px); box-shadow: 0 8px 24px rgba(17,24,39,.14); }
+  dialog.reg-dialog::backdrop { background: rgba(15,23,42,.45); }
+  #reg-toast { position: fixed; right: 20px; bottom: 20px; z-index: 70; max-width: 360px; }
+</style>
+
+<div class="reg">
+  <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Attendance Register</h1>
+      <p class="text-gray-500 text-sm mt-1">Tick each learner who was present. Totals and weekly percentages update as you go, and every tick is saved straight away.</p>
     </div>
-    <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="subject_id"
-               value="{{ selected_subject.id }}">
-        <input type="hidden" name="date" value="{{ selected_date }}">
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="border-b border-gray-100 text-left text-xs
-                           font-medium text-gray-400 uppercase tracking-wide">
-                    <th class="px-6 py-3">Learner</th>
-                    <th class="px-6 py-3 text-center">Present</th>
-                    <th class="px-6 py-3 text-center">Absent</th>
-                    <th class="px-6 py-3 text-center">Late</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                {% for learner in learners %}
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-3 font-medium text-gray-900">
-                        {{ learner.get_full_name }}
-                    </td>
-                    <td class="px-6 py-3 text-center">
-                        <input type="radio"
-                               name="status_{{ learner.id }}"
-                               value="present"
-                               {% if learner.att_status == 'present' %}
-                               checked{% endif %}
-                               class="w-4 h-4 text-emerald-600
-                                      focus:ring-emerald-500">
-                    </td>
-                    <td class="px-6 py-3 text-center">
-                        <input type="radio"
-                               name="status_{{ learner.id }}"
-                               value="absent"
-                               {% if learner.att_status == 'absent' %}
-                               checked{% endif %}
-                               class="w-4 h-4 text-red-600
-                                      focus:ring-red-500">
-                    </td>
-                    <td class="px-6 py-3 text-center">
-                        <input type="radio"
-                               name="status_{{ learner.id }}"
-                               value="late"
-                               {% if learner.att_status == 'late' %}
-                               checked{% endif %}
-                               class="w-4 h-4 text-amber-600
-                                      focus:ring-amber-500">
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
-            <button type="submit"
-                    class="bg-emerald-600 hover:bg-emerald-700 text-white
-                           px-6 py-2.5 rounded-lg text-sm font-medium
-                           transition-colors">
-                Save Attendance
-            </button>
+    <div class="flex items-center gap-2 text-sm">
+      <label for="reg-year" class="text-gray-500">Year</label>
+      <select id="reg-year" class="h-9 border border-gray-300 rounded-lg px-3 text-sm bg-white">
+        {% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div class="px-5 pt-4 pb-3 border-b border-gray-200">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <div class="inline-flex border border-gray-300 rounded-lg overflow-hidden" role="group" aria-label="View">
+          <button type="button" id="view-month" aria-pressed="true" class="px-3 py-1.5 text-sm font-medium">Month</button>
+          <button type="button" id="view-year" aria-pressed="false" class="px-3 py-1.5 text-sm font-medium border-l border-gray-300">Full year</button>
         </div>
-    </form>
+        <div id="month-nav" class="inline-flex items-center gap-1">
+          <button type="button" id="prev-month" aria-label="Previous month" class="w-8 h-8 border border-gray-300 rounded-lg grid place-items-center disabled:opacity-40">
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <span id="month-label" class="min-w-[104px] text-center font-semibold text-sm"></span>
+          <button type="button" id="next-month" aria-label="Next month" class="w-8 h-8 border border-gray-300 rounded-lg grid place-items-center disabled:opacity-40">
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <span class="flex-1"></span>
+        <select id="filter-school" aria-label="School" class="h-9 border border-gray-300 rounded-lg px-3 text-sm bg-white"><option value="">All schools</option></select>
+        <select id="filter-grade" aria-label="Grade" class="h-9 border border-gray-300 rounded-lg px-3 text-sm bg-white"><option value="">All grades</option></select>
+        <input type="search" id="filter-name" placeholder="Find a learner" aria-label="Find a learner" class="h-9 border border-gray-300 rounded-lg px-3 text-sm w-48">
+        <button type="button" id="open-holidays" class="h-9 px-3 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Holidays and closures</button>
+      </div>
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-1 mt-3 text-sm text-gray-500" id="reg-stats"></div>
+    </div>
+
+    <div class="reg-wrap" id="reg-wrap">
+      <table id="register" aria-label="Attendance register"></table>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-3 border-t border-gray-200 text-xs text-gray-500">
+      <span class="inline-flex items-center gap-1.5"><span class="sw on"></span>Present</span>
+      <span class="inline-flex items-center gap-1.5"><span class="sw"></span>Absent</span>
+      <span class="inline-flex items-center gap-1.5"><span class="sw pre"></span>Before start date</span>
+      <span class="inline-flex items-center gap-1.5"><span class="sw closed"></span>No session</span>
+      <span class="inline-flex items-center gap-1.5"><span class="sw future"></span>Not yet happened</span>
+      <span class="inline-flex items-center gap-1.5"><span class="sw today"></span>Today</span>
+      <span class="flex-1"></span>
+      <span id="save-state" aria-live="polite">All changes saved</span>
+    </div>
+  </div>
+
+  <!-- How this page works -->
+  <section class="mt-10 max-w-3xl text-sm leading-relaxed text-gray-700" aria-labelledby="help-title">
+    <h2 id="help-title" class="text-lg font-bold text-gray-900">How this page works</h2>
+    <p class="text-gray-500 mt-1">The attendance register records which learners came to each programme session. It follows the same layout as the Inkululeko attendance spreadsheet: one row per learner, each month split into weeks, and a box for every school day from Monday to Friday.</p>
+
+    <h3 class="font-semibold text-gray-900 text-[15px] mt-6 mb-1.5">Reading the register</h3>
+    <ul class="list-disc pl-5 space-y-1.5">
+      <li><strong>Each row is one learner.</strong> The left side shows their learner ID, name, grade and school. These columns stay in place while you scroll sideways through the dates. Only active learner accounts are listed.</li>
+      <li><strong>Each month is split into weeks.</strong> Weeks follow the real calendar, so a month can have four or five weeks, and the first or last week of a month may only have a few days. Grey boxes belong to the neighbouring month.</li>
+      <li><strong>The column after Friday shows that week&rsquo;s percentage</strong> for each learner.</li>
+      <li><strong>Today&rsquo;s column is highlighted.</strong> Days that haven&rsquo;t happened yet are faded and can&rsquo;t be ticked.</li>
+      <li><strong>Hatched columns are days with no session</strong>, such as school holidays and public holidays. Hover over or select the date to see why.</li>
+      <li><strong>Dashed boxes are days before a learner&rsquo;s start date</strong> (see below). They don&rsquo;t count against the learner, but you can still tick them if the learner attended.</li>
+    </ul>
+
+    <h3 class="font-semibold text-gray-900 text-[15px] mt-6 mb-1.5">Taking attendance</h3>
+    <p>Tick a learner&rsquo;s box on a day they were present. Leave it empty if they were absent. There is no separate &ldquo;absent&rdquo; mark: once a session day has passed, an empty box counts as absent. Each tick is saved to the database straight away, so everyone using the register sees the same information. The note in the bottom-right corner of the register shows whether your changes have been saved. If a change can&rsquo;t be saved, for example because the connection dropped, the box goes back to how it was and a message explains what happened.</p>
+    <p class="mt-2">To mark a whole day at once, select the date at the top of its column and choose <strong>Mark all shown as present</strong> or <strong>Mark all shown as absent</strong>. This only changes the learners currently shown, so you can filter to one school or grade first and mark just that group. You can then untick the few learners who were missing.</p>
+
+    <h3 class="font-semibold text-gray-900 text-[15px] mt-6 mb-1.5">How the numbers are worked out</h3>
+    <ul class="list-disc pl-5 space-y-1.5">
+      <li><strong>Session days</strong> are weekdays up to and including today that aren&rsquo;t marked as having no session.</li>
+      <li><strong>A learner&rsquo;s start date</strong> is the earlier of the day their account was created and the first day they were ever ticked as present. Session days before that aren&rsquo;t counted, so a learner who joins in August isn&rsquo;t marked absent for February to July. If you enter attendance for earlier days, the start date moves back to the first day you tick.</li>
+      <li><strong>Total days</strong> is the number of session days in the chosen year from the learner&rsquo;s start date to today.</li>
+      <li><strong>Present days</strong> is the number of those days the learner was ticked as present.</li>
+      <li><strong>Attendance</strong> is present days divided by total days. The same figure appears on dashboards, learner pages, the attendance report and report cards.</li>
+      <li><strong>The weekly percentage</strong> is the days present that week divided by the session days that week. A week with a holiday is only measured against the days that actually had a session. A dash means there were no session days for that learner that week.</li>
+      <li><strong>Colours</strong> make it easier to spot learners who need support: green is 80% or more, amber is 60% to 79%, and red is below 60%.</li>
+    </ul>
+    <p class="mt-2">The summary line above the register covers the learners currently shown. <strong>Average attendance</strong> is the combined present days of those learners divided by their combined total days, and <strong>Below 60%</strong> counts how many of them are under that threshold.</p>
+
+    <h3 class="font-semibold text-gray-900 text-[15px] mt-6 mb-1.5">Holidays and closures</h3>
+    <p>Days with no session don&rsquo;t count towards anyone&rsquo;s total, so learners aren&rsquo;t marked down for holidays. The 2026 register starts with the public school holidays from the Department of Basic Education calendar, South African public holidays that fall on a weekday, and January and December closed for the programme. Other years start empty, so add their holidays before taking attendance.</p>
+    <p class="mt-2">Administrators can change these. Classroom assistants can see the list but not change it.</p>
+    <ul class="list-disc pl-5 space-y-1.5 mt-2">
+      <li><strong>To close a single day</strong>, select its date and choose <strong>Mark as no session</strong>. You can do this in advance for days that haven&rsquo;t happened yet.</li>
+      <li><strong>To reopen a single day</strong>, select its date and choose <strong>Hold a session on this day</strong>.</li>
+      <li><strong>To manage whole periods</strong>, use <strong>Holidays and closures</strong> above the register. It lists every closure with its dates, lets you remove any of them, and lets you add a new one with a name and a date range.</li>
+    </ul>
+    <p class="mt-2">Closing a day permanently removes any ticks already on it. Reopening a day that has already passed means it counts again, so every learner will show as absent for that day until they are ticked.</p>
+
+    <h3 class="font-semibold text-gray-900 text-[15px] mt-6 mb-1.5">Views and filters</h3>
+    <ul class="list-disc pl-5 space-y-1.5">
+      <li><strong>Month</strong> shows one month at a time. Use the arrows to move between months. This view is easiest on a phone.</li>
+      <li><strong>Full year</strong> shows all twelve months side by side, like the spreadsheet, with an orange divider between months. It opens at the current month.</li>
+      <li><strong>Year</strong>, at the top right, switches to another year&rsquo;s register.</li>
+      <li><strong>School, grade and name filters</strong> narrow the list of learners. You can search by name or by learner ID.</li>
+    </ul>
+  </section>
 </div>
-{% endif %}
+
+<div class="reg-menu" id="day-menu" role="menu" hidden></div>
+
+<dialog class="reg-dialog" id="holidays" aria-labelledby="hol-title">
+  <form method="dialog" class="flex items-center justify-between px-5 pt-4">
+    <h2 id="hol-title" class="text-base font-bold text-gray-900">Holidays and closures</h2>
+    <button value="close" aria-label="Close" class="w-8 h-8 border border-gray-300 rounded-lg grid place-items-center">
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </form>
+  <p class="px-5 mt-1.5 mb-2.5 text-sm text-gray-500">Days listed here don&rsquo;t count towards anyone&rsquo;s attendance. Weekends are never counted.</p>
+  <ul id="hol-list" class="px-5 max-h-72 overflow-auto border-y border-gray-200 divide-y divide-gray-100"></ul>
+  <form id="hol-form" class="px-5 pt-3.5 pb-5 grid gap-2.5" novalidate>
+    <h3 class="text-sm font-semibold text-gray-900">Add a closure</h3>
+    <label class="grid gap-1 text-xs font-medium text-gray-500">Name
+      <input type="text" id="hol-name" maxlength="100" placeholder="For example, Exam week" class="h-9 border border-gray-300 rounded-lg px-3 text-sm text-gray-900">
+    </label>
+    <div class="grid grid-cols-2 gap-2.5">
+      <label class="grid gap-1 text-xs font-medium text-gray-500">From
+        <input type="date" id="hol-from" class="h-9 border border-gray-300 rounded-lg px-3 text-sm text-gray-900">
+      </label>
+      <label class="grid gap-1 text-xs font-medium text-gray-500">To (leave blank for one day)
+        <input type="date" id="hol-to" class="h-9 border border-gray-300 rounded-lg px-3 text-sm text-gray-900">
+      </label>
+    </div>
+    <p id="hol-error" class="text-xs text-red-700 empty:hidden" role="alert"></p>
+    <button type="submit" id="hol-submit" class="justify-self-start bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">Add closure</button>
+  </form>
+</dialog>
+
+<div id="reg-toast" aria-live="assertive"></div>
+
+{{ register_data|json_script:"register-data" }}
+<script>
+(function () {
+  "use strict";
+
+  var DATA = JSON.parse(document.getElementById("register-data").textContent);
+  var YEAR = DATA.year;
+  var TODAY = DATA.today;
+  var CAN_CLOSE = DATA.canManageClosures;
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var DOW = ["Mon","Tue","Wed","Thu","Fri"];
+  var LEARNERS = DATA.learners;
+  var BY_PK = {};
+  LEARNERS.forEach(function (l) { BY_PK[l.pk] = l; });
+
+  /* ---------- Dates and calendar ---------- */
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+  var CAL = [];
+  for (var m = 0; m < 12; m++) {
+    var first = new Date(YEAR, m, 1);
+    var d = new Date(first);
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+    var mon = new Date(d);
+    mon.setDate(d.getDate() - (d.getDay() - 1));
+    var weeks = [];
+    while (true) {
+      var days = [], any = false;
+      for (var i = 0; i < 5; i++) {
+        var x = new Date(mon);
+        x.setDate(mon.getDate() + i);
+        if (x.getMonth() === m && x.getFullYear() === YEAR) { days.push({ iso: iso(x), day: x.getDate(), dow: i }); any = true; }
+        else days.push({ iso: null, day: x.getDate(), dow: i });
+      }
+      if (!any) break;
+      weeks.push(days);
+      mon.setDate(mon.getDate() + 7);
+    }
+    CAL.push(weeks);
+  }
+  var ALL_DAYS = [];
+  CAL.forEach(function (w) { w.forEach(function (ds) { ds.forEach(function (dd) { if (dd.iso) ALL_DAYS.push(dd.iso); }); }); });
+
+  /* ---------- State ---------- */
+  var present = new Set(DATA.present);
+  var presentBy = {};
+  LEARNERS.forEach(function (l) { presentBy[l.pk] = new Set(); });
+  DATA.present.forEach(function (key) {
+    var parts = key.split("|");
+    if (presentBy[parts[0]]) presentBy[parts[0]].add(parts[1]);
+  });
+  var closed = DATA.closed;
+  var startCache = {};
+
+  function setPresent(pk, day, on) {
+    var key = pk + "|" + day;
+    if (on) { present.add(key); presentBy[pk].add(day); }
+    else { present.delete(key); presentBy[pk].delete(day); }
+    delete startCache[pk];
+  }
+
+  // Earlier of account creation and first day ever marked present (matches core/attendance.py)
+  function startOf(pk) {
+    if (pk in startCache) return startCache[pk];
+    var l = BY_PK[pk];
+    var candidates = [l.joined, l.firstBefore].filter(Boolean);
+    presentBy[pk].forEach(function (day) { candidates.push(day); });
+    candidates.sort();
+    return (startCache[pk] = candidates.length ? candidates[0] : null);
+  }
+
+  function isHeld(day) { return !!day && day <= TODAY && !closed[day]; }
+  function counts(pk, day) { var s = startOf(pk); return isHeld(day) && (!s || day >= s); }
+
+  function learnerTotals(pk) {
+    var total = 0, pres = 0;
+    for (var i = 0; i < ALL_DAYS.length; i++) {
+      var day = ALL_DAYS[i];
+      if (counts(pk, day)) { total++; if (presentBy[pk].has(day)) pres++; }
+    }
+    return { total: total, present: pres, pct: total ? pres / total : null };
+  }
+
+  function weekPct(pk, days) {
+    var held = 0, pres = 0;
+    days.forEach(function (dd) {
+      if (counts(pk, dd.iso)) { held++; if (presentBy[pk].has(dd.iso)) pres++; }
+    });
+    return held ? pres / held : null;
+  }
+
+  function chip(p) {
+    if (p === null) return '<span class="pct none" title="No session days">\u2013</span>';
+    var r = Math.round(p * 100);
+    var cls = r >= 80 ? "good" : (r >= 60 ? "warn" : "bad");
+    return '<span class="pct ' + cls + '">' + r + "%</span>";
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function gradeLabel(g) { return /^\d+$/.test(g) ? "Grade " + g : g; }
+  function detail(l) {
+    return [l.grade ? gradeLabel(l.grade) : "", l.school || "No school"].filter(Boolean).join(", ");
+  }
+
+  /* ---------- Saving ---------- */
+  function csrf() {
+    var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+  var pending = 0;
+  var saveEl = document.getElementById("save-state");
+  function setSaving(delta) {
+    pending += delta;
+    saveEl.textContent = pending > 0 ? "Saving\u2026" : "All changes saved";
+  }
+  function post(url, body) {
+    setSaving(1);
+    return fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      return res.json().catch(function () { return { ok: false }; }).then(function (data) {
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "That change couldn\u2019t be saved. Check your connection, or refresh the page and sign in again.");
+        }
+        return data;
+      });
+    }, function () {
+      throw new Error("That change couldn\u2019t be saved because the connection dropped. Check your connection and try again.");
+    }).finally(function () { setSaving(-1); });
+  }
+
+  var toastEl = document.getElementById("reg-toast");
+  var toastTimer = null;
+  function toast(msg) {
+    toastEl.innerHTML = '<div class="bg-red-50 text-red-800 border border-red-200 rounded-lg px-4 py-3 text-sm shadow">' + esc(msg) + "</div>";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.innerHTML = ""; }, 7000);
+  }
+
+  /* ---------- UI state ---------- */
+  var view = "month";
+  var currentMonth = TODAY.slice(0, 4) === String(YEAR) ? Number(TODAY.slice(5, 7)) - 1 : (TODAY < String(YEAR) ? 0 : 11);
+  var filters = { school: "", grade: "", name: "" };
+
+  var els = {
+    table: document.getElementById("register"),
+    wrap: document.getElementById("reg-wrap"),
+    stats: document.getElementById("reg-stats"),
+    monthLabel: document.getElementById("month-label"),
+    monthNav: document.getElementById("month-nav"),
+    prev: document.getElementById("prev-month"),
+    next: document.getElementById("next-month"),
+    viewMonth: document.getElementById("view-month"),
+    viewYear: document.getElementById("view-year"),
+    school: document.getElementById("filter-school"),
+    grade: document.getElementById("filter-grade"),
+    name: document.getElementById("filter-name"),
+    menu: document.getElementById("day-menu")
+  };
+
+  function visibleLearners() {
+    var q = filters.name.trim().toLowerCase();
+    return LEARNERS.filter(function (l) {
+      if (filters.school && l.school !== filters.school) return false;
+      if (filters.grade && l.grade !== filters.grade) return false;
+      if (q && l.name.toLowerCase().indexOf(q) === -1 && String(l.id).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+
+  function monthsInView() {
+    return view === "year" ? CAL.map(function (_, i) { return i; }) : [currentMonth];
+  }
+
+  function weekRange(days) {
+    var real = days.filter(function (dd) { return dd.iso; });
+    var a = real[0].day, b = real[real.length - 1].day;
+    return a === b ? String(a) : a + "\u2013" + b;
+  }
+
+  function render() {
+    var months = monthsInView();
+    var rows = visibleLearners();
+    var h = [];
+
+    h.push("<thead><tr class='r1'>");
+    h.push("<th class='sum s1' rowspan='3' scope='col'>ID</th>");
+    h.push("<th class='sum s2' rowspan='3' scope='col'>Learner</th>");
+    h.push("<th class='sum num s3' rowspan='3' scope='col' title='Session days since the learner\u2019s start date'>Total days</th>");
+    h.push("<th class='sum num s4' rowspan='3' scope='col'>Present days</th>");
+    h.push("<th class='sum num s5' rowspan='3' scope='col'>Attendance</th>");
+    months.forEach(function (m, idx) {
+      h.push("<th class='month' data-month='" + m + "' colspan='" + (CAL[m].length * 6) + "' scope='colgroup'><span>" + MONTHS[m] + "</span></th>");
+      if (idx < months.length - 1) h.push("<th class='gap' rowspan='3' aria-hidden='true'></th>");
+    });
+    h.push("</tr><tr class='r2'>");
+    months.forEach(function (m) {
+      CAL[m].forEach(function (days, w) {
+        h.push("<th class='week' colspan='6' scope='colgroup'>Week " + (w + 1) + "<span>" + weekRange(days) + " " + SHORT[m] + "</span></th>");
+      });
+    });
+    h.push("</tr><tr class='r3'>");
+    months.forEach(function (m) {
+      CAL[m].forEach(function (days) {
+        days.forEach(function (dd) {
+          if (!dd.iso) { h.push("<th class='day outside' aria-hidden='true'></th>"); return; }
+          var cls = "day";
+          if (closed[dd.iso]) cls += " closed";
+          if (dd.iso > TODAY) cls += " future";
+          if (dd.iso === TODAY) cls += " today";
+          var tip = closed[dd.iso] ? closed[dd.iso] : (dd.iso > TODAY ? "Not yet happened" : "Mark the whole day");
+          h.push("<th class='" + cls + "' scope='col'><button type='button' data-day='" + dd.iso + "' title='" + esc(tip) + "'>" + DOW[dd.dow] + "<b>" + dd.day + "</b></button></th>");
+        });
+        h.push("<th class='wkpct' scope='col' title='Days present out of session days that week'>%</th>");
+      });
+    });
+    h.push("</tr></thead><tbody>");
+
+    if (!rows.length) {
+      var span = 5 + months.reduce(function (s, m) { return s + CAL[m].length * 6; }, 0) + months.length - 1;
+      var msg = LEARNERS.length
+        ? "No learners match these filters. Clear the search or choose another school or grade."
+        : "There are no active learner accounts yet. Add learners in Manage Users and they\u2019ll appear here.";
+      h.push("<tr><td colspan='" + span + "' style='padding:48px 24px;color:#6b7280;white-space:normal'>" + msg + "</td></tr>");
+    }
+
+    rows.forEach(function (l) {
+      var t = learnerTotals(l.pk);
+      var start = startOf(l.pk);
+      h.push("<tr data-pk='" + l.pk + "'>");
+      h.push("<td class='s1' title='" + esc(l.id) + "'>" + esc(l.id) + "</td>");
+      h.push("<td class='s2' title='" + esc(l.name) + "'>" + esc(l.name) + "<small>" + esc(detail(l)) + "</small></td>");
+      h.push("<td class='s3' data-sum='total'>" + t.total + "</td>");
+      h.push("<td class='s4' data-sum='present'>" + t.present + "</td>");
+      h.push("<td class='s5' data-sum='pct'>" + chip(t.pct) + "</td>");
+      months.forEach(function (m, idx) {
+        CAL[m].forEach(function (days, w) {
+          days.forEach(function (dd) {
+            if (!dd.iso) { h.push("<td class='outside'></td>"); return; }
+            if (closed[dd.iso]) { h.push("<td class='cell closed'></td>"); return; }
+            var cls = "cell";
+            if (dd.iso === TODAY) cls += " today";
+            if (start && dd.iso < start && dd.iso <= TODAY) cls += " pre";
+            var checked = presentBy[l.pk].has(dd.iso);
+            h.push("<td class='" + cls + "'><input type='checkbox' data-day='" + dd.iso + "' data-week='" + m + "-" + w + "'" +
+              (checked ? " checked" : "") + (dd.iso > TODAY ? " disabled" : "") +
+              " aria-label='" + esc(l.name) + ", " + DOW[dd.dow] + " " + dd.day + " " + MONTHS[m] + "'></td>");
+          });
+          h.push("<td class='wkpct' data-wk='" + m + "-" + w + "'>" + chip(weekPct(l.pk, days)) + "</td>");
+        });
+        if (idx < months.length - 1) h.push("<td class='gap' aria-hidden='true'></td>");
+      });
+      h.push("</tr>");
+    });
+    h.push("</tbody>");
+
+    els.table.innerHTML = h.join("");
+    renderStats(rows);
+    els.monthLabel.textContent = MONTHS[currentMonth];
+    els.prev.disabled = currentMonth === 0;
+    els.next.disabled = currentMonth === 11;
+  }
+
+  function renderStats(rows) {
+    var tot = 0, pres = 0, below = 0;
+    rows.forEach(function (l) {
+      var t = learnerTotals(l.pk);
+      tot += t.total; pres += t.present;
+      if (t.pct !== null && Math.round(t.pct * 100) < 60) below++;
+    });
+    var held = ALL_DAYS.filter(isHeld).length;
+    els.stats.innerHTML =
+      "<span>Learners shown <strong class='text-gray-900'>" + rows.length + " of " + LEARNERS.length + "</strong></span>" +
+      "<span>Session days so far in " + YEAR + " <strong class='text-gray-900'>" + held + "</strong></span>" +
+      "<span>Average attendance <strong class='text-gray-900'>" + (tot ? Math.round(pres / tot * 100) + "%" : "\u2013") + "</strong></span>" +
+      "<span>Below 60% <strong class='text-gray-900'>" + below + "</strong></span>";
+  }
+
+  // A change can move a learner's start date, which affects every week, so redraw their row.
+  function refreshRow(pk) {
+    var tr = els.table.querySelector("tr[data-pk='" + pk + "']");
+    if (!tr) return;
+    var start = startOf(pk);
+    tr.querySelectorAll("td.cell input").forEach(function (box) {
+      var day = box.getAttribute("data-day");
+      box.checked = presentBy[pk].has(day);
+      box.parentNode.classList.toggle("pre", !!(start && day < start && day <= TODAY));
+    });
+    tr.querySelectorAll("td.wkpct").forEach(function (cell) {
+      var wk = cell.getAttribute("data-wk").split("-");
+      cell.innerHTML = chip(weekPct(pk, CAL[Number(wk[0])][Number(wk[1])]));
+    });
+    var t = learnerTotals(pk);
+    tr.querySelector("[data-sum='total']").textContent = t.total;
+    tr.querySelector("[data-sum='present']").textContent = t.present;
+    tr.querySelector("[data-sum='pct']").innerHTML = chip(t.pct);
+  }
+
+  function redraw() {
+    var x = els.wrap.scrollLeft, y = els.wrap.scrollTop;
+    render();
+    els.wrap.scrollLeft = x; els.wrap.scrollTop = y;
+  }
+
+  /* ---------- Ticking ---------- */
+  els.table.addEventListener("change", function (e) {
+    var box = e.target;
+    if (!box.matches("input[type='checkbox']")) return;
+    var pk = Number(box.closest("tr").getAttribute("data-pk"));
+    var day = box.getAttribute("data-day");
+    var on = box.checked;
+    setPresent(pk, day, on);
+    refreshRow(pk);
+    renderStats(visibleLearners());
+    post(DATA.urls.mark, { learner: pk, date: day, present: on }).catch(function (err) {
+      setPresent(pk, day, !on);
+      refreshRow(pk);
+      renderStats(visibleLearners());
+      toast(err.message);
+    });
+  });
+
+  /* ---------- Day menu ---------- */
+  var menuDay = null, menuOpenedAt = 0;
+  function closeMenu() { els.menu.hidden = true; menuDay = null; }
+
+  function prettyDate(day) {
+    var m = Number(day.slice(5, 7)) - 1;
+    var dt = new Date(YEAR, m, Number(day.slice(8, 10)));
+    return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][dt.getDay()] + " " + dt.getDate() + " " + MONTHS[m];
+  }
+
+  function openMenu(btn) {
+    var day = btn.getAttribute("data-day");
+    menuDay = day;
+    menuOpenedAt = Date.now();
+    var n = visibleLearners().length;
+    var parts = ["<h2>" + prettyDate(day) + "</h2>"];
+    if (closed[day]) {
+      parts.push("<p>" + esc(closed[day]) + ". This day doesn\u2019t count towards anyone\u2019s total.</p>");
+      if (CAN_CLOSE) parts.push("<button type='button' role='menuitem' data-act='reopen'>Hold a session on this day</button>");
+    } else if (day > TODAY) {
+      parts.push("<p>This day hasn\u2019t happened yet." + (CAN_CLOSE ? " You can mark it as a day with no session in advance." : "") + "</p>");
+      if (CAN_CLOSE) parts.push("<button type='button' role='menuitem' data-act='close'>Mark as no session</button>");
+    } else {
+      parts.push("<p>Applies to the " + n + " learner" + (n === 1 ? "" : "s") + " shown.</p>");
+      parts.push("<button type='button' role='menuitem' data-act='all'>Mark all shown as present</button>");
+      parts.push("<button type='button' role='menuitem' data-act='none'>Mark all shown as absent</button>");
+      if (CAN_CLOSE) parts.push("<button type='button' role='menuitem' class='danger' data-act='close'>Mark as no session</button>");
+    }
+    els.menu.innerHTML = parts.join("");
+    els.menu.hidden = false;
+    var r = btn.getBoundingClientRect();
+    var mw = els.menu.offsetWidth, mh = els.menu.offsetHeight;
+    var left = Math.min(Math.max(8, r.left + r.width / 2 - mw / 2), window.innerWidth - mw - 8);
+    var top = r.bottom + 6;
+    if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+    els.menu.style.left = left + "px";
+    els.menu.style.top = top + "px";
+    var firstBtn = els.menu.querySelector("button");
+    if (firstBtn) firstBtn.focus();
+  }
+
+  els.table.addEventListener("click", function (e) {
+    var btn = e.target.closest("th.day button");
+    if (!btn) return;
+    e.stopPropagation();
+    if (menuDay === btn.getAttribute("data-day") && !els.menu.hidden) { closeMenu(); return; }
+    openMenu(btn);
+  });
+
+  function markDay(day, on) {
+    var rows = visibleLearners();
+    var before = rows.map(function (l) { return [l.pk, presentBy[l.pk].has(day)]; });
+    rows.forEach(function (l) { setPresent(l.pk, day, on); });
+    redraw();
+    post(DATA.urls.day, { date: day, present: on, learners: rows.map(function (l) { return l.pk; }) })
+      .catch(function (err) {
+        before.forEach(function (b) { setPresent(b[0], day, b[1]); });
+        redraw();
+        toast(err.message);
+      });
+  }
+
+  function changeClosure(body) {
+    return post(DATA.urls.closures, body).then(function (data) {
+      if (data.closed) {
+        Object.keys(data.closed).forEach(function (day) {
+          closed[day] = data.closed[day];
+          LEARNERS.forEach(function (l) { if (presentBy[l.pk].has(day)) setPresent(l.pk, day, false); });
+        });
+      }
+      (data.removed || []).forEach(function (day) { delete closed[day]; });
+      redraw();
+      renderHolidays();
+    });
+  }
+
+  els.menu.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-act]");
+    if (!b || !menuDay) return;
+    var act = b.getAttribute("data-act");
+    var day = menuDay;
+    closeMenu();
+    if (act === "all") markDay(day, true);
+    if (act === "none") markDay(day, false);
+    if (act === "close") {
+      var ticked = LEARNERS.filter(function (l) { return presentBy[l.pk].has(day); }).length;
+      if (ticked && !confirm("Mark " + prettyDate(day) + " as no session? This removes the " + ticked + " tick" + (ticked === 1 ? "" : "s") + " already on that day.")) return;
+      changeClosure({ action: "add", from: day, reason: "No session" }).catch(function (err) { toast(err.message); });
+    }
+    if (act === "reopen") changeClosure({ action: "remove", from: day }).catch(function (err) { toast(err.message); });
+  });
+
+  document.addEventListener("click", function (e) { if (!els.menu.hidden && !els.menu.contains(e.target)) closeMenu(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+  function maybeClose() { if (Date.now() - menuOpenedAt > 300) closeMenu(); }
+  els.wrap.addEventListener("scroll", maybeClose);
+  window.addEventListener("scroll", maybeClose, { passive: true });
+  window.addEventListener("resize", closeMenu);
+
+  /* ---------- Holidays and closures ---------- */
+  var hol = {
+    dialog: document.getElementById("holidays"),
+    list: document.getElementById("hol-list"),
+    form: document.getElementById("hol-form"),
+    name: document.getElementById("hol-name"),
+    from: document.getElementById("hol-from"),
+    to: document.getElementById("hol-to"),
+    error: document.getElementById("hol-error"),
+    submit: document.getElementById("hol-submit")
+  };
+  hol.from.min = hol.to.min = YEAR + "-01-01";
+  hol.from.max = hol.to.max = YEAR + "-12-31";
+  if (!CAN_CLOSE) hol.form.remove();
+
+  function shortDate(day) { return Number(day.slice(8, 10)) + " " + SHORT[Number(day.slice(5, 7)) - 1]; }
+
+  function closureRanges() {
+    var out = [], cur = null;
+    for (var i = 0; i < ALL_DAYS.length; i++) {
+      var day = ALL_DAYS[i], label = closed[day];
+      if (label && cur && cur.label === label && cur.last === i - 1) { cur.to = day; cur.last = i; cur.count++; }
+      else if (label) { cur = { label: label, from: day, to: day, last: i, count: 1 }; out.push(cur); }
+      else cur = null;
+    }
+    return out;
+  }
+
+  function renderHolidays() {
+    var ranges = closureRanges();
+    if (!ranges.length) {
+      hol.list.innerHTML = "<li class='py-3.5 text-sm text-gray-500'>No closures for " + YEAR + " yet." + (CAN_CLOSE ? " Add one below." : "") + "</li>";
+      return;
+    }
+    hol.list.innerHTML = ranges.map(function (r) {
+      var when = r.from === r.to ? shortDate(r.from) : shortDate(r.from) + " to " + shortDate(r.to);
+      return "<li class='flex items-center justify-between gap-3 py-2.5'><div><strong class='block text-sm font-semibold text-gray-900'>" + esc(r.label) +
+        "</strong><span class='text-xs text-gray-500'>" + when + ", " + r.count + " school day" + (r.count === 1 ? "" : "s") + "</span></div>" +
+        (CAN_CLOSE ? "<button type='button' class='text-xs font-medium text-red-700 hover:underline' data-from='" + r.from + "' data-to='" + r.to + "' data-label='" + esc(r.label) + "'>Remove</button>" : "") +
+        "</li>";
+    }).join("");
+  }
+
+  document.getElementById("open-holidays").addEventListener("click", function () {
+    hol.error.textContent = "";
+    renderHolidays();
+    hol.dialog.showModal();
+  });
+
+  hol.list.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-from]");
+    if (!b) return;
+    if (!confirm("Remove \u201c" + b.getAttribute("data-label") + "\u201d? Those days will count towards attendance again.")) return;
+    b.disabled = true;
+    changeClosure({ action: "remove", from: b.getAttribute("data-from"), to: b.getAttribute("data-to") })
+      .catch(function (err) { b.disabled = false; toast(err.message); });
+  });
+
+  hol.from.addEventListener("change", function () { hol.to.min = hol.from.value || YEAR + "-01-01"; });
+
+  hol.form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var from = hol.from.value, to = hol.to.value || from;
+    if (!from) { hol.error.textContent = "Choose a start date."; return; }
+    if (to < from) { hol.error.textContent = "The end date is before the start date."; return; }
+    var ticked = 0;
+    ALL_DAYS.forEach(function (day) {
+      if (day >= from && day <= to) LEARNERS.forEach(function (l) { if (presentBy[l.pk].has(day)) ticked++; });
+    });
+    if (ticked && !confirm("This removes " + ticked + " tick" + (ticked === 1 ? "" : "s") + " already entered on those days. Continue?")) return;
+    hol.error.textContent = "";
+    hol.submit.disabled = true;
+    changeClosure({ action: "add", from: from, to: to, reason: hol.name.value.trim() })
+      .then(function () { hol.form.reset(); hol.to.min = YEAR + "-01-01"; })
+      .catch(function (err) { hol.error.textContent = err.message; })
+      .finally(function () { hol.submit.disabled = false; });
+  });
+
+  /* ---------- Views, navigation and filters ---------- */
+  function styleViewButtons() {
+    [els.viewMonth, els.viewYear].forEach(function (b) {
+      var on = b.getAttribute("aria-pressed") === "true";
+      b.style.background = on ? "#364fc7" : "#fff";
+      b.style.color = on ? "#fff" : "#374151";
+    });
+  }
+
+  function setView(v) {
+    view = v;
+    els.viewMonth.setAttribute("aria-pressed", String(v === "month"));
+    els.viewYear.setAttribute("aria-pressed", String(v === "year"));
+    styleViewButtons();
+    els.monthNav.style.visibility = v === "month" ? "visible" : "hidden";
+    render();
+    if (v === "year") scrollToMonth(currentMonth); else els.wrap.scrollLeft = 0;
+  }
+
+  function scrollToMonth(m) {
+    var th = els.table.querySelector("th.month[data-month='" + m + "']");
+    if (!th) return;
+    els.wrap.scrollLeft = 0;
+    var edge = parseFloat(getComputedStyle(els.wrap).getPropertyValue("--sticky-w")) || 0;
+    els.wrap.scrollLeft = Math.max(0, th.getBoundingClientRect().left - els.wrap.getBoundingClientRect().left - edge);
+  }
+
+  els.viewMonth.addEventListener("click", function () { setView("month"); });
+  els.viewYear.addEventListener("click", function () { setView("year"); });
+  els.prev.addEventListener("click", function () { if (currentMonth > 0) { currentMonth--; render(); } });
+  els.next.addEventListener("click", function () { if (currentMonth < 11) { currentMonth++; render(); } });
+  document.getElementById("reg-year").addEventListener("change", function () {
+    window.location.search = "?year=" + encodeURIComponent(this.value);
+  });
+
+  Array.from(new Set(LEARNERS.map(function (l) { return l.school; }).filter(Boolean))).sort().forEach(function (s) {
+    var o = document.createElement("option"); o.value = s; o.textContent = s; els.school.appendChild(o);
+  });
+  Array.from(new Set(LEARNERS.map(function (l) { return l.grade; }).filter(Boolean)))
+    .sort(function (a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0) || a.localeCompare(b); })
+    .forEach(function (g) { var o = document.createElement("option"); o.value = g; o.textContent = gradeLabel(g); els.grade.appendChild(o); });
+
+  els.school.addEventListener("change", function () { filters.school = els.school.value; render(); });
+  els.grade.addEventListener("change", function () { filters.grade = els.grade.value; render(); });
+  els.name.addEventListener("input", function () { filters.name = els.name.value; render(); });
+
+  window.addEventListener("beforeunload", function (e) {
+    if (pending > 0) { e.preventDefault(); e.returnValue = ""; }
+  });
+
+  setView("month");
+})();
+</script>
 {% endblock %}

@@ -158,7 +158,6 @@
         <thead>
             <tr class="border-b border-gray-100 text-left text-xs
                        font-medium text-gray-400 uppercase tracking-wide">
-                <th class="px-6 py-3">Subject</th>
                 <th class="px-6 py-3">Date</th>
                 <th class="px-6 py-3">Status</th>
             </tr>
@@ -166,27 +165,22 @@
         <tbody class="divide-y divide-gray-50">
             {% for record in attendance %}
             <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-6 py-3 text-gray-600">
-                    {{ record.subject.name }}
-                </td>
-                <td class="px-6 py-3 text-gray-600">{{ record.date }}</td>
+                <td class="px-6 py-3 text-gray-600">{{ record.date|date:"D j M Y" }}</td>
                 <td class="px-6 py-3">
                     <span class="inline-flex px-2 py-0.5 rounded-full text-xs
                                  font-medium
                         {% if record.status == 'present' %}
                             bg-emerald-50 text-emerald-700
-                        {% elif record.status == 'late' %}
-                            bg-amber-50 text-amber-700
                         {% else %}
                             bg-red-50 text-red-700
                         {% endif %}">
-                        {{ record.get_status_display }}
+                        {{ record.status|capfirst }}
                     </span>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="3" class="px-6 py-12 text-center text-gray-400">
+                <td colspan="2" class="px-6 py-12 text-center text-gray-400">
                     No attendance records yet.
                 </td>
             </tr>

@@ -98,16 +98,6 @@ class AdminCreateForm(BaseUserCreateForm):
 UserCreateForm = BaseUserCreateForm
 
 
-class AttendanceFilterForm(forms.Form):
-    subject = forms.ModelChoiceField(
-        queryset=Subject.objects.all().order_by('name'),
-        widget=forms.Select(attrs={'class': TW}),
-    )
-    date = forms.DateField(widget=forms.DateInput(attrs={
-        'type': 'date', 'class': TW,
-    }))
-
-
 class GradeForm(forms.ModelForm):
     class Meta:
         model = Grade

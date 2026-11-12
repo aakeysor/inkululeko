@@ -7,14 +7,22 @@ from django.db import models
 from django.db.models import Avg
 from django.db.models.functions import TruncMonth
 from django.http import JsonResponse
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
-from datetime import date
+from datetime import date, timedelta
 from .models import (
 User, School, Subject, Enrollment, Attendance, Grade, MentorAssignment, ChatMessage,
-ActivityLog, TutoringSession, MentorRequest,
+ActivityLog, TutoringSession, MentorRequest, Closure,
 )
 from .forms import (
-LoginForm, UserCreateForm, AttendanceFilterForm, GradeForm, ReportCardUploadForm
+LoginForm, UserCreateForm, GradeForm, ReportCardUploadForm
+)
+from .attendance import (
+programme_today, year_bounds, weekdays_between, attendance_stats,
+learner_attendance, recent_days, present_learner_ids, is_session_day,
+joined_date,
 )
 from .decorators import role_required
 from .chatbot import get_chat_response
@@ -210,13 +218,12 @@ def dashboard_view(request):
                         count += 1
                 level_distribution.append({'label': label, 'count': count})
 
-            # Today's attendance
-            today_present = Attendance.objects.filter(
-                subject=selected_subject, date=date.today(), status='present',
-            ).count()
-            today_absent = Attendance.objects.filter(
-                subject=selected_subject, date=date.today(), status='absent',
-            ).count()
+            # Today's attendance for learners in this class
+            today = programme_today()
+            if is_session_day(today):
+                enrolled_ids = list(enrolled.values_list('id', flat=True))
+                today_present = len(present_learner_ids(today, enrolled_ids))
+                today_absent = len(enrolled_ids) - today_present
 
         import json
         ctx.update({
@@ -259,27 +266,9 @@ def dashboard_view(request):
 
         )
 
-        ctx['attendance'] = (
+        ctx['attendance'] = recent_days(user, 10)
 
-            Attendance.objects.filter(learner=user)
-
-            .order_by('-date')[:10]
-
-        )
-
-        total = Attendance.objects.filter(learner=user).count()
-
-        present = Attendance.objects.filter(
-
-            learner=user, status='present',
-
-        ).count()
-
-        ctx['attendance_rate'] = (
-
-            round((present / total) * 100, 1) if total > 0 else 0
-
-        )
+        ctx['attendance_rate'] = learner_attendance(user)['rate']
 
         avg = Grade.objects.filter(learner=user).aggregate(
 
@@ -387,19 +376,7 @@ def dashboard_view(request):
 
             l = a.learner
 
-            total = Attendance.objects.filter(learner=l).count()
-
-            present = Attendance.objects.filter(
-
-                learner=l, status='present',
-
-            ).count()
-
-            att_rate = (
-
-                round((present / total) * 100, 1) if total > 0 else 0
-
-            )
+            att_rate = learner_attendance(l)['rate']
 
             avg = Grade.objects.filter(learner=l).aggregate(
 
@@ -434,77 +411,230 @@ def dashboard_view(request):
 # Attendance
 # ---------------------------------------------------------
 
+# Roles that can take attendance, and roles that can manage holidays and closures
+ATTENDANCE_ROLES = ('admin', 'assistant')
+CLOSURE_ROLES = ('admin',)
+
+
 @login_required
-@role_required('admin', 'assistant')
+@role_required(*ATTENDANCE_ROLES)
+@ensure_csrf_cookie
 def mark_attendance_view(request):
-    form = AttendanceFilterForm()
-    form.fields['subject'].queryset = Subject.objects.all().order_by('name')
+    today = programme_today()
+    try:
+        year = int(request.GET.get('year', today.year))
+    except ValueError:
+        year = today.year
+    start, end = year_bounds(year)
 
-    learners = []
-    selected_subject = None
-    selected_date = None
+    learners = list(
+        User.objects.filter(role='learner', is_active=True)
+        .select_related('school')
+        .order_by('last_name', 'first_name')
+    )
+    ids = [l.id for l in learners]
 
-    if (request.method == 'GET'
-        and 'subject' in request.GET
-        and 'date' in request.GET):
-        selected_subject = get_object_or_404(
-            Subject, pk=request.GET['subject']
-        )
-        selected_date = request.GET['date']
-        learners = (
-            User.objects.filter(
-                role='learner',
-                enrollments=selected_subject,
-            ).order_by('last_name', 'first_name')
-        )
-        existing = dict(
-            Attendance.objects.filter(
-                subject=selected_subject,
-                date=selected_date,
-            ).values_list(
-                'learner_id',
-                'status'
-            )
-        )
-        for l in learners:
-            l.att_status = existing.get(l.id, '')
+    # Earliest attendance before this year, so the page can work out start dates
+    first_before = dict(
+        Attendance.objects.filter(learner_id__in=ids, date__lt=start)
+        .values('learner_id')
+        .annotate(first=models.Min('date'))
+        .values_list('learner_id', 'first')
+    )
+    present = [
+        f'{learner_id}|{day.isoformat()}'
+        for learner_id, day in Attendance.objects.filter(
+            learner_id__in=ids, date__range=(start, end),
+        ).values_list('learner_id', 'date')
+    ]
+    closed = {
+        day.isoformat(): reason
+        for day, reason in Closure.objects.filter(
+            date__range=(start, end),
+        ).values_list('date', 'reason')
+    }
 
-    if request.method == 'POST':
-        subject = get_object_or_404(
-            Subject, pk=request.POST.get('subject_id'),
-        )
-        att_date = request.POST.get('date')
-        enrolled = User.objects.filter(
-            role='learner',
-            enrollments=subject,
-        )
-        for learner in enrolled:
-            status = request.POST.get(f'status_{learner.id}', 'absent')
-            Attendance.objects.update_or_create(
-                learner=learner,
-                subject=subject,
-                date=att_date,
-                defaults={
-                    'status': status,
-                    'marked_by': request.user,
-                },
-            )
-            ActivityLog.objects.create(
-                user=request.user,
-                action_type='attendance',
-                description=f'{request.user.get_full_name()} marked attendance for {subject.name}',
-            )
-        messages.success(
-            request,
-            f'Attendance recorded for {subject.name} on {att_date}.',
-        )
-        return redirect('mark_attendance')
+    def iso(d):
+        return d.isoformat() if d else None
+
+    register_data = {
+        'year': year,
+        'today': today.isoformat(),
+        'canManageClosures': request.user.role in CLOSURE_ROLES,
+        'learners': [{
+            'pk': l.id,
+            'id': l.display_id or str(l.id),
+            'name': l.get_full_name() or l.username,
+            'grade': l.grade_level or '',
+            'school': l.school.name if l.school else '',
+            'joined': iso(joined_date(l)),
+            'firstBefore': iso(first_before.get(l.id)),
+        } for l in learners],
+        'present': present,
+        'closed': closed,
+        'urls': {
+            'mark': reverse('attendance_mark'),
+            'day': reverse('attendance_day'),
+            'closures': reverse('attendance_closures'),
+        },
+    }
+
+    first_year = (
+        Attendance.objects.order_by('date').values_list('date', flat=True).first()
+    )
+    lowest = min(first_year.year if first_year else today.year, today.year, year)
+    years = list(range(lowest, max(today.year, year) + 2))
 
     return render(request, 'core/mark_attendance.html', {
-        'form': form,
-        'learners': learners,
-        'selected_subject': selected_subject,
-        'selected_date': selected_date,
+        'register_data': register_data,
+        'year': year,
+        'years': years,
+    })
+
+
+def _json_body(request):
+    try:
+        return json.loads(request.body or b'{}')
+    except ValueError:
+        return {}
+
+
+def _parse_day(value):
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def _json_error(message, status=400):
+    return JsonResponse({'ok': False, 'error': message}, status=status)
+
+
+def _check_markable(day):
+    """Return an error message if attendance can't be taken on this day."""
+    if day is None:
+        return 'That date isn\u2019t valid.'
+    if day.weekday() >= 5:
+        return 'Attendance is only taken on weekdays.'
+    if day > programme_today():
+        return 'That day hasn\u2019t happened yet.'
+    if Closure.objects.filter(date=day).exists():
+        return 'There\u2019s no session on that day.'
+    return None
+
+
+def _log_attendance(user, day):
+    """Log at most one activity entry per user per date taken."""
+    description = (
+        f'{user.get_full_name() or user.username} took attendance for '
+        f'{day.strftime("%A")} {day.day} {day.strftime("%B %Y")}'
+    )
+    already = ActivityLog.objects.filter(
+        user=user, action_type='attendance', description=description,
+        timestamp__date=timezone.now().date(),
+    ).exists()
+    if not already:
+        ActivityLog.objects.create(
+            user=user, action_type='attendance', description=description,
+        )
+
+
+@login_required
+@role_required(*ATTENDANCE_ROLES)
+@require_POST
+def attendance_mark_api(request):
+    """Mark one learner present or absent on one day."""
+    data = _json_body(request)
+    day = _parse_day(data.get('date'))
+    error = _check_markable(day)
+    if error:
+        return _json_error(error)
+    learner = User.objects.filter(pk=data.get('learner'), role='learner').first()
+    if learner is None:
+        return _json_error('That learner wasn\u2019t found.', 404)
+
+    if data.get('present'):
+        Attendance.objects.get_or_create(
+            learner=learner, date=day, defaults={'marked_by': request.user},
+        )
+    else:
+        Attendance.objects.filter(learner=learner, date=day).delete()
+    _log_attendance(request.user, day)
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@role_required(*ATTENDANCE_ROLES)
+@require_POST
+def attendance_day_api(request):
+    """Mark several learners present or absent on one day."""
+    data = _json_body(request)
+    day = _parse_day(data.get('date'))
+    error = _check_markable(day)
+    if error:
+        return _json_error(error)
+    ids = [int(i) for i in data.get('learners', []) if str(i).isdigit()]
+    learner_ids = list(
+        User.objects.filter(pk__in=ids, role='learner').values_list('id', flat=True)
+    )
+
+    if data.get('present'):
+        Attendance.objects.bulk_create(
+            [Attendance(learner_id=i, date=day, marked_by=request.user) for i in learner_ids],
+            ignore_conflicts=True,
+        )
+    else:
+        Attendance.objects.filter(learner_id__in=learner_ids, date=day).delete()
+    _log_attendance(request.user, day)
+    return JsonResponse({'ok': True, 'count': len(learner_ids)})
+
+
+@login_required
+@role_required(*CLOSURE_ROLES)
+@require_POST
+def attendance_closures_api(request):
+    """Add or remove days with no session."""
+    data = _json_body(request)
+    start = _parse_day(data.get('from'))
+    end = _parse_day(data.get('to') or data.get('from'))
+    if start is None or end is None:
+        return _json_error('Choose a valid start date.')
+    if end < start:
+        return _json_error('The end date is before the start date.')
+    if (end - start).days > 366:
+        return _json_error('Choose a period of a year or less.')
+
+    days = list(weekdays_between(start, end))
+    if not days:
+        return _json_error('Those dates are all weekends, so there\u2019s nothing to change.')
+
+    name = request.user.get_full_name() or request.user.username
+    when = (
+        f'{start.day} {start.strftime("%b %Y")}' if start == end
+        else f'{start.day} {start.strftime("%b")} to {end.day} {end.strftime("%b %Y")}'
+    )
+
+    if data.get('action') == 'remove':
+        Closure.objects.filter(date__in=days).delete()
+        ActivityLog.objects.create(
+            user=request.user, action_type='attendance',
+            description=f'{name} reopened {when} for sessions',
+        )
+        return JsonResponse({'ok': True, 'removed': [d.isoformat() for d in days]})
+
+    reason = (data.get('reason') or '').strip()[:100] or 'No session'
+    for day in days:
+        Closure.objects.update_or_create(
+            date=day, defaults={'reason': reason, 'created_by': request.user},
+        )
+    Attendance.objects.filter(date__in=days).delete()
+    ActivityLog.objects.create(
+        user=request.user, action_type='attendance',
+        description=f'{name} marked {when} as no session ({reason})',
+    )
+    return JsonResponse({
+        'ok': True,
+        'closed': {d.isoformat(): reason for d in days},
     })
 
 
@@ -842,11 +972,10 @@ def user_detail_api(request, user_id):
     }
 
     if u.role == 'learner':
-        total = Attendance.objects.filter(learner=u).count()
-        present = Attendance.objects.filter(learner=u, status='present').count()
-        data['attendance_rate'] = round((present / total) * 100, 1) if total > 0 else 0
-        data['attendance_present'] = present
-        data['attendance_total'] = total
+        att = learner_attendance(u)
+        data['attendance_rate'] = att['rate']
+        data['attendance_present'] = att['present']
+        data['attendance_total'] = att['total']
 
         avg = Grade.objects.filter(learner=u).aggregate(avg=Avg('score'))['avg']
         data['avg_score'] = round(avg, 1) if avg else 0
@@ -893,13 +1022,10 @@ def user_detail_api(request, user_id):
             } for m in subj_monthly]
 
         # Recent attendance
-        data['recent_attendance'] = list(
-            Attendance.objects.filter(learner=u)
-            .order_by('-date')[:10]
-            .values('date', 'status')
-        )
-        for r in data['recent_attendance']:
-            r['date'] = r['date'].strftime('%Y-%m-%d')
+        data['recent_attendance'] = [
+            {'date': r['date'].strftime('%Y-%m-%d'), 'status': r['status']}
+            for r in recent_days(u, 10)
+        ]
 
         # Tutoring sessions
         sessions = TutoringSession.objects.filter(
@@ -1020,10 +1146,8 @@ def learner_progress_view(request, learner_id):
         Grade.objects.filter(learner=learner)
         .select_related('subject').order_by('date')
     )
-    attendance = (
-        Attendance.objects.filter(learner=learner)
-        .order_by('-date')[:30]
-    )
+    attendance = recent_days(learner, 30)
+    attendance_summary = learner_attendance(learner)
 
     subjects = Subject.objects.filter(enrollments__learner=learner)
     subject_stats = []
@@ -1032,26 +1156,16 @@ def learner_progress_view(request, learner_id):
             Grade.objects.filter(learner=learner, subject=subj)
             .aggregate(avg=Avg('score'))['avg'] or 0
         )
-        total_att = Attendance.objects.filter(
-            learner=learner, subject=subj
-        ).count()
-        present_att = Attendance.objects.filter(
-            learner=learner, subject=subj, status='present',
-        ).count()
-        att_rate = (
-            round((present_att / total_att) * 100, 1)
-            if total_att > 0 else 0
-        )
         subject_stats.append({
             'subject': subj,
             'avg_score': round(avg, 1),
-            'attendance_rate': att_rate,
         })
 
     return render(request, 'core/learner_progress.html', {
         'learner': learner,
         'grades': grades,
         'attendance': attendance,
+        'attendance_summary': attendance_summary,
         'subject_stats': subject_stats,
     })
 
@@ -1389,37 +1503,53 @@ def learner_subjects_api(request, learner_id):
 @login_required
 @role_required('admin')
 def attendance_report_view(request):
-    subjects = Subject.objects.all().order_by('name')
-    selected_subject = request.GET.get('subject', '')
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
+    today = programme_today()
+    schools = School.objects.all().order_by('name')
+    selected_school = request.GET.get('school', '')
+    selected_grade = request.GET.get('grade', '')
 
-    records = Attendance.objects.select_related(
-        'learner', 'subject', 'marked_by'
-    ).order_by('-date')
+    def parse(value, default):
+        try:
+            return date.fromisoformat(value) if value else default
+        except ValueError:
+            return default
 
-    if selected_subject:
-        records = records.filter(subject_id=selected_subject)
-    if date_from:
-        records = records.filter(date__gte=date_from)
-    if date_to:
-        records = records.filter(date__lte=date_to)
+    date_from = parse(request.GET.get('date_from'), date(today.year, 1, 1))
+    date_to = parse(request.GET.get('date_to'), today)
+    if date_to < date_from:
+        date_from, date_to = date_to, date_from
 
-    total = records.count()
-    present = records.filter(status='present').count()
-    absent = records.filter(status='absent').count()
-    late = records.filter(status='late').count()
+    learners = User.objects.filter(role='learner', is_active=True).select_related('school')
+    if selected_school:
+        learners = learners.filter(school_id=selected_school)
+    if selected_grade:
+        learners = learners.filter(grade_level=selected_grade)
+    learners = list(learners.order_by('last_name', 'first_name'))
+
+    stats = attendance_stats(learners, date_from, date_to)
+    rows = [{'learner': l, **stats[l.id]} for l in learners]
+    rows.sort(key=lambda r: (r['rate'] if r['total'] else 101, r['learner'].last_name))
+
+    total = sum(r['total'] for r in rows)
+    present = sum(r['present'] for r in rows)
+    grades = sorted(
+        {g for g in User.objects.filter(role='learner').values_list('grade_level', flat=True) if g},
+        key=lambda g: (len(g), g),
+    )
 
     return render(request, 'core/report_attendance.html', {
-        'subjects': subjects,
-        'records': records[:100],
-        'selected_subject': selected_subject,
-        'date_from': date_from,
-        'date_to': date_to,
-        'total': total,
+        'schools': schools,
+        'grades': grades,
+        'selected_school': selected_school,
+        'selected_grade': selected_grade,
+        'date_from': date_from.isoformat(),
+        'date_to': date_to.isoformat(),
+        'rows': rows,
+        'learner_count': len(rows),
         'present': present,
-        'absent': absent,
-        'late': late,
+        'absent': total - present,
+        'average': round(present / total * 100, 1) if total else 0,
+        'below_60': sum(1 for r in rows if r['total'] and r['rate'] < 59.5),
     })
 
 
@@ -1566,13 +1696,10 @@ def learner_report_view(request, learner_id):
         result = 'Not Achieved'
 
     # Attendance
-    total_att = Attendance.objects.filter(learner=learner).count()
-    absent_count = Attendance.objects.filter(
-        learner=learner, status='absent'
-    ).count()
-    present_count = Attendance.objects.filter(
-        learner=learner, status='present'
-    ).count()
+    att = learner_attendance(learner)
+    total_att = att['total']
+    absent_count = att['absent']
+    present_count = att['present']
 
     # Get unique term names from grades
     terms = (

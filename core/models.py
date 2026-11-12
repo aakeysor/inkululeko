@@ -136,41 +136,55 @@ class MentorAssignment(models.Model):
         )
 
 
-# Attendance, used by teachers and students
+# Attendance: one row per learner per day they were present
 class Attendance(models.Model):
-    class Status(models.TextChoices):
-        PRESENT = 'present', 'Present'
-        ABSENT = 'absent', 'Absent'
-        LATE = 'late', 'Late'
+    """A learner was present at the programme on this date.
 
+    Absence is not stored. A past weekday that is not a Closure, and falls on
+    or after the learner's start date, counts as a session day; with no row
+    for that day, the learner was absent. See core/attendance.py.
+    """
     learner = models.ForeignKey(
         User, on_delete=models.CASCADE,
         related_name='attendance_records',
         limit_choices_to={'role': 'learner'}
     )
-    subject = models.ForeignKey(
-        Subject, on_delete=models.CASCADE,
-        related_name='attendance_records'
-    )
     date = models.DateField()
-    status = models.CharField(
-        max_length=10, choices=Status.choices, default=Status.PRESENT
-    )
     marked_by = models.ForeignKey(
         User, on_delete=models.SET_NULL,
-        null=True, related_name='attendance_marked'
+        null=True, blank=True, related_name='attendance_marked'
     )
+    marked_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('learner', 'subject', 'date')
         ordering = ['-date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['learner', 'date'],
+                name='unique_attendance_per_learner_per_day',
+            ),
+        ]
 
     def __str__(self):
-        return (
-            f"{self.learner.get_full_name()} — "
-            f"{self.subject.name} — {self.date} ({self.status})"
-        )
+        return f"{self.learner.get_full_name()} present on {self.date}"
 
+
+# Days with no programme session (holidays, closures)
+class Closure(models.Model):
+    """A weekday with no session. It does not count towards attendance."""
+    date = models.DateField(unique=True)
+    reason = models.CharField(max_length=100, default='No session')
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='closures_created'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date']
+
+    def __str__(self):
+        return f"{self.date}: {self.reason}"
 
 
 # Marks

@@ -12,6 +12,9 @@ urlpatterns = [
 
     # Attendance & Grades
     path('attendance/', views.mark_attendance_view, name='mark_attendance'),
+    path('attendance/api/mark/', views.attendance_mark_api, name='attendance_mark'),
+    path('attendance/api/day/', views.attendance_day_api, name='attendance_day'),
+    path('attendance/api/closures/', views.attendance_closures_api, name='attendance_closures'),
     path('grades/', views.record_grades_view, name='record_grades'),
 
     # Report Card Scanning

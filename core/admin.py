@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, School, Subject, Enrollment,
-    MentorAssignment, Attendance, Grade, ChatMessage,
+    MentorAssignment, Attendance, Closure, Grade, ChatMessage,
     ActivityLog, TutoringSession, MentorRequest,
 )
 
@@ -43,8 +43,16 @@ class MentorAssignmentAdmin(admin.ModelAdmin):
 
 @admin.register(Attendance)
 class AttendanceAdmin(admin.ModelAdmin):
-    list_display = ('learner', 'subject', 'date', 'status', 'marked_by')
-    list_filter = ('status', 'date', 'marked_by')
+    list_display = ('learner', 'date', 'marked_by', 'marked_at')
+    list_filter = ('date', 'marked_by')
+    search_fields = ('learner__first_name', 'learner__last_name', 'learner__display_id')
+    date_hierarchy = 'date'
+
+
+@admin.register(Closure)
+class ClosureAdmin(admin.ModelAdmin):
+    list_display = ('date', 'reason', 'created_by')
+    list_filter = ('reason',)
     date_hierarchy = 'date'
 
 

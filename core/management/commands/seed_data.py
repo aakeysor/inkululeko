@@ -182,19 +182,16 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('  Sample grades seeded'))
 
         # --- Sample Attendance ---
-        for learner, subjects in learners_to_grade:
-            for subj in subjects[:2]:
-                for days_ago in range(30, 0, -1):
-                    att_date = today - timedelta(days=days_ago)
-                    if att_date.weekday() >= 5:
-                        continue
-                    status = random.choices(
-                        ['present', 'absent', 'late'],
-                        weights=[85, 10, 5],
-                    )[0]
+        # One record per day present; days without a record count as absent
+        for learner, _subjects in learners_to_grade:
+            for days_ago in range(30, 0, -1):
+                att_date = today - timedelta(days=days_ago)
+                if att_date.weekday() >= 5:
+                    continue
+                if random.random() < 0.85:
                     Attendance.objects.get_or_create(
-                        learner=learner, subject=subj, date=att_date,
-                        defaults={'status': status, 'marked_by': assistant1},
+                        learner=learner, date=att_date,
+                        defaults={'marked_by': assistant1},
                     )
         self.stdout.write(self.style.SUCCESS('  Sample attendance seeded'))
 
